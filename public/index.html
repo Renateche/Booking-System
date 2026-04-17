@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Equipment Booking System</title>
+
+    <style>
+      /* ===== Light mode (default) ===== */
+      :root {
+        /* Layout */
+        --radius: 6px;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+        /* Surfaces */
+        --bg-page: #f5f6f8;
+        --bg-panel: #ffffff;
+        --bg-subtle: #faf9f8;
+        --bg-hover: #f3f9fd;
+
+        /* Borders */
+        --border-subtle: #e1dfdd;
+
+        /* Text */
+        --text-primary: #242424;
+        --text-secondary: #605e5c;
+        --text-disabled: #a19f9d;
+
+        /* Brand */
+        --accent: #0078d4;
+        --accent-hover: #106ebe;
+
+        /* Status */
+        --danger: #d13438;
+
+        /* Calendar */
+        --calendar-booked-bg: rgba(209, 52, 56, 0.15);
+        --calendar-booked-text: #a4262c;
+
+        --calendar-selected-bg: rgba(0, 120, 212, 0.25);
+        --calendar-range-bg: rgba(0, 120, 212, 0.12);
+      }
+
+      /* ===== Dark mode ===== */
+      body.dark {
+        --bg-page: #1e1e1e;
+        --bg-panel: #252526;
+        --bg-subtle: #2d2d30;
+        --bg-hover: #2f3238;
+
+        --border-subtle: #3f3f46;
+
+        --text-primary: #ffffff;
+        --text-secondary: #c8c8c8;
+        --text-disabled: #8a8a8a;
+
+        --accent: #2899f5;
+        --accent-hover: #3aa0f3;
+
+        --danger: #f1707b;
+
+        --calendar-booked-bg: rgba(241, 112, 123, 0.35);
+        --calendar-booked-text: #ffd2d6;
+
+        --calendar-selected-bg: rgba(40, 153, 245, 0.35);
+        --calendar-range-bg: rgba(40, 153, 245, 0.2);
+      }
+
+      /* ====================Base Page======================== */
+
+      body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg-page);
+        font-family:
+          'Segoe UI',
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          Arial,
+          sans-serif;
+        color: var(--text-primary);
+        transition:
+          background-color 0.15s ease,
+          color 0.15s ease;
+      }
+
+      /* =================Typography======================== */
+
+      h1 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .subtitle {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+      }
+
+      h2 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0 0 12px 0;
+      }
+
+      /* ====================Panels / Sections======================= */
+
+      section,
+      .calendar-month {
+        background: var(--bg-panel);
+        border-radius: var(--radius);
+        border: 1px solid var(--border-subtle);
+        box-shadow: var(--shadow);
+        padding: 16px 20px;
+        margin-bottom: 20px;
+      }
+
+      /* =========================Forms=============================== */
+
+      label {
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        display: block;
+      }
+
+      input,
+      select {
+        font-size: 13px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-panel);
+        color: var(--text-primary);
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+
+      /* ======================Buttons========================= */
+
+      button {
+        font-size: 12px;
+        border-radius: 4px;
+        padding: 6px 12px;
+        border: none;
+        cursor: pointer;
+      }
+
+      .primary-btn {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .primary-btn:hover {
+        background: var(--accent-hover);
+      }
+
+      .danger-btn {
+        background: transparent;
+        color: var(--danger);
+      }
+
+      .danger-btn:hover {
+        background: rgba(209, 52, 56, 0.12);
+      }
+
+      /* ========================Tables========================== */
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      th {
+        background: var(--bg-subtle);
+        font-weight: 600;
+        text-align: left;
+        padding: 8px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      td {
+        padding: 8px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      /* =====================Disabled Sections========================= */
+
+      .disabled {
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      /* ===========================Empty State============================= */
+
+      .empty-state {
+        font-size: 12px;
+        color: var(--text-secondary);
+        padding: 8px 0;
+      }
+
+      /* ======================Calendar Layout=========================== */
+
+      #calendarWrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .calendar-title {
+        text-align: center;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+      }
+
+      .calendar-header {
+        font-size: 11px;
+        text-align: center;
+        color: var(--text-secondary);
+      }
+
+      /* Day cell – Azure DevOps sprint style */
+      .calendar-day {
+        height: 42px;
+        border-radius: 4px;
+        border: 1px solid var(--border-subtle);
+        font-size: 11px;
+        padding: 4px;
+        text-align: right;
+        background: var(--bg-panel);
+        transition:
+          background 0.1s ease,
+          border-color 0.1s ease;
+      }
+
+      .calendar-day.outside {
+        background: var(--bg-subtle);
+        color: var(--text-disabled);
+      }
+
+      .calendar-day.booked {
+        background: var(--calendar-booked-bg);
+        color: var(--calendar-booked-text);
+        font-weight: 600;
+      }
+
+      .calendar-day.selected {
+        background: var(--calendar-selected-bg);
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+
+      .calendar-day.range {
+        background: var(--calendar-range-bg);
+      }
+
+      .calendar-day:hover:not(.booked) {
+        background: var(--bg-hover);
+        cursor: pointer;
+      }
+
+      /* Booker name */
+      .calendar-booked-by {
+        margin-top: 2px;
+        font-size: 10px;
+        line-height: 1.2;
+        text-align: left;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    </style>
+  </head>
+  <div style="display: flex; justify-content: space-between; align-items: center">
+    <div>
+      <h1>Equipment Booking</h1>
+      <div class="subtitle">Internal QRF tool – shared bookings</div>
+    </div>
+
+    <button id="themeToggleBtn" title="Toggle dark mode">🌙</button>
+  </div>
+  <body>
+    <!-- Step 1 -->
+    <h2>1. Select equipment</h2>
+    <select id="equipmentSelect">
+      <option value="">-- Choose equipment --</option>
+    </select>
+    <!-- CALENDAR -->
+    <div id="calendarSection" style="display: none; margin-top: 1rem">
+      <h3>Availability (booked days in red)</h3>
+
+      <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem">
+        <button id="prevMonthBtn">◀</button>
+        <button id="nextMonthBtn">▶</button>
+        <span style="font-size: 0.85rem; color: #666"> Some Text </span>
+      </div>
+
+      <div id="calendarWrapper">
+        <!-- calendars injected here -->
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <section id="bookingSection" class="disabled">
+      <h2>2. Book this equipment</h2>
+
+      <form id="bookingForm">
+        <div class="form-row">
+          <div>
+            <label for="startDate">Start date</label>
+            <input type="date" id="startDate" required />
+          </div>
+
+          <div>
+            <label for="endDate">End date</label>
+            <input type="date" id="endDate" required />
+          </div>
+        </div>
+
+        <label for="bookedBy">Your name</label>
+        <input type="text" id="bookedBy" required />
+
+        <label for="note">Optional note</label>
+        <input type="text" id="note" />
+
+        <button type="submit" class="primary-btn">Book equipment</button>
+
+        <div id="formMessage"></div>
+      </form>
+    </section>
+
+    <!-- Step 3 -->
+    <h2>3. Current bookings</h2>
+
+    <table id="bookingsTable">
+      <thead>
+        <tr>
+          <th>Start</th>
+          <th>End</th>
+          <th>Booked by</th>
+          <th>Note</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="noBookings" class="empty-state" style="display: none">
+      No bookings for this equipment.
+    </div>
+
+    <!-- ---------- Frontend logic ---------- -->
+    <script src="app.js"></script>
+  </body>
+</html>
