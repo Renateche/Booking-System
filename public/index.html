@@ -69,7 +69,7 @@
 
       body {
         margin: 0;
-        padding: 24px;
+        padding: 0;
         background: var(--bg-page);
         font-family:
           'Segoe UI',
@@ -664,6 +664,10 @@
 
       @media (max-width: 640px) {
         body {
+          padding: 0;
+        }
+
+        .page-content {
           padding: 16px;
         }
 
@@ -681,240 +685,280 @@
           grid-template-columns: 1fr;
         }
       }
+
+      /* Large screen optimizations */
+      .page-content {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      .step1-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      @media (min-width: 1280px) {
+        .step1-layout {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+          align-items: start;
+        }
+
+        .step1-left {
+          display: flex;
+          flex-direction: column;
+        }
+
+        #suggestedSlotCard {
+          margin-top: 0;
+        }
+      }
     </style>
   </head>
   <body>
-    <div class="page-header">
-      <div>
-        <div class="title-row">
-          <h1>Equipment Booking</h1>
-          <span id="demoBadge" class="demo-badge">DEMO</span>
-        </div>
-        <div id="pageSubtitle" class="subtitle">Internal QRF tool – shared bookings</div>
-      </div>
-
-      <button id="themeToggleBtn" title="Toggle dark mode">🌙</button>
-    </div>
-
-    <section class="step-card">
-      <h2>1. Choose equipment type</h2>
-      <p class="step-copy">
-        Choose one or more types and how long you need the equipment for. The app will suggest the
-        earliest matching slot.
-      </p>
-
-      <div class="flow-guide" aria-label="Booking flow overview">
-        <div class="flow-step">1. Choose types</div>
-        <div class="flow-step">2. Review the suggested dates below</div>
-        <div class="flow-step">3. Confirm and submit the booking form</div>
-      </div>
-
-      <div class="field-note" style="margin-bottom: 14px">
-        Suggestions use whole days and look across all equipment that matches the selected types.
-      </div>
-
-      <div id="selectedTypeChips" class="selected-chips" aria-live="polite"></div>
-      <div id="typeOptions" class="type-options"></div>
-
-      <div class="duration-row">
+    <div class="page-content">
+      <div class="page-header">
         <div>
-          <label for="bookingDurationDays">Booking length (days)</label>
-          <input id="bookingDurationDays" type="number" min="1" step="1" value="1" />
+          <div class="title-row">
+            <h1>Equipment Booking</h1>
+            <span id="demoBadge" class="demo-badge">DEMO</span>
+          </div>
+          <div id="pageSubtitle" class="subtitle">Internal QRF tool – shared bookings</div>
+        </div>
+
+        <button id="themeToggleBtn" title="Toggle dark mode">🌙</button>
+      </div>
+
+      <section class="step-card">
+        <h2>1. Choose equipment type</h2>
+        <p class="step-copy">
+          Choose one or more types and how long you need the equipment for. The app will suggest the
+          earliest matching slot.
+        </p>
+
+        <div class="flow-guide" aria-label="Booking flow overview">
+          <div class="flow-step">1. Choose types</div>
+          <div class="flow-step">2. Review the suggested dates below</div>
+          <div class="flow-step">3. Confirm and submit the booking form</div>
+        </div>
+
+        <div class="field-note" style="margin-bottom: 14px">
+          Suggestions use whole days and look across all equipment that matches the selected types.
+        </div>
+
+        <div class="step1-layout">
+          <div class="step1-left">
+            <div id="selectedTypeChips" class="selected-chips" aria-live="polite"></div>
+            <div id="typeOptions" class="type-options"></div>
+
+            <div class="duration-row">
+              <div>
+                <label for="bookingDurationDays">Booking length (days)</label>
+                <input id="bookingDurationDays" type="number" min="1" step="1" value="1" />
+              </div>
+            </div>
+
+            <div class="step-actions">
+              <button id="suggestAvailabilityBtn" class="primary-btn" type="button" disabled>
+                Suggest availability
+              </button>
+              <div id="suggestionMessage" class="step-hint">
+                Choose at least one type to request a suggested slot.
+              </div>
+            </div>
+          </div>
+
+          <div id="suggestedSlotCard" class="suggestion-card">
+            <h3>Suggested slot</h3>
+
+            <div class="suggestion-equipment-list">
+              <div class="suggestion-label">Equipment to book</div>
+              <div id="suggestedEquipmentList" class="equipment-items"></div>
+            </div>
+
+            <div class="suggestion-grid">
+              <div>
+                <div class="suggestion-label">Suggested dates</div>
+                <div id="suggestedDateRange" class="suggestion-value"></div>
+              </div>
+
+              <div>
+                <div class="suggestion-label">Duration</div>
+                <div id="suggestedDuration" class="suggestion-value"></div>
+              </div>
+            </div>
+
+            <button id="useSuggestedSlotBtn" class="primary-btn" type="button">
+              Use this slot
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div id="nextStepBanner" class="next-step-banner" aria-live="polite">
+        <div class="next-step-title">Step 2 ready</div>
+        <div id="nextStepCopy" class="next-step-copy"></div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div id="calendarSection" style="display: none; margin-top: 1rem">
+        <h3>2. Review available dates</h3>
+
+        <div class="calendar-instructions">
+          <strong>How to select dates:</strong> Click an available date to set your start date, then
+          click again to set your end date. The calendar shows booked dates in red (unavailable).
+          Click a third time to clear your selection.
+        </div>
+
+        <div class="calendar-controls">
+          <button id="prevMonthBtn">◀</button>
+          <button id="nextMonthBtn">▶</button>
+          <button id="clearDatesBtn" type="button" style="display: none">Clear dates</button>
+          <div
+            id="calendarSelectionState"
+            class="calendar-selection-state"
+            style="display: none; margin-left: auto"
+          ></div>
+        </div>
+
+        <div id="calendarWrapper">
+          <!-- calendars injected here -->
         </div>
       </div>
 
-      <div class="step-actions">
-        <button id="suggestAvailabilityBtn" class="primary-btn" type="button" disabled>
-          Suggest availability
+      <!-- Step 2 -->
+      <section id="bookingSection" class="disabled">
+        <h2>2. Book this equipment</h2>
+        <p id="bookingSectionHint" class="step-copy">
+          Complete Step 1 first. When a suggestion is ready, review the dates below and then confirm
+          this booking here.
+        </p>
+
+        <div class="form-and-receipt-container">
+          <form id="bookingForm">
+            <div class="form-row">
+              <div>
+                <label for="startDate">Start date</label>
+                <input type="date" id="startDate" required />
+              </div>
+
+              <div>
+                <label for="endDate">End date</label>
+                <input type="date" id="endDate" required />
+              </div>
+            </div>
+
+            <label for="bookedBy">Your name</label>
+            <input type="text" id="bookedBy" required />
+
+            <label for="note">Optional note</label>
+            <input type="text" id="note" />
+
+            <button type="submit" class="primary-btn">Book equipment</button>
+
+            <div id="formMessage"></div>
+          </form>
+
+          <div id="bookingReceiptCard" class="receipt-card">
+            <h3>Booking receipt</h3>
+            <textarea id="bookingReceiptText" class="receipt-text" readonly></textarea>
+            <button id="copyReceiptBtn" type="button" class="secondary-btn">Copy receipt</button>
+          </div>
+        </div>
+      </section>
+
+      <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center">
+        <button id="newBookingBtn" class="primary-btn" title="Start a new booking">
+          New Booking
         </button>
-        <div id="suggestionMessage" class="step-hint">
-          Choose at least one type to request a suggested slot.
-        </div>
+        <button
+          id="addDemoBtn"
+          class="secondary-btn"
+          style="display: none"
+          title="Add sample demo bookings"
+        >
+          Add demo bookings
+        </button>
+        <button
+          id="clearDemoBtn"
+          class="secondary-btn"
+          style="display: none"
+          title="Clear all demo bookings"
+        >
+          Clear demo bookings
+        </button>
       </div>
 
-      <div id="suggestedSlotCard" class="suggestion-card">
-        <h3>Suggested slot</h3>
+      <!-- Step 3 -->
+      <h2>3. Current bookings</h2>
 
-        <div class="suggestion-equipment-list">
-          <div class="suggestion-label">Equipment to book</div>
-          <div id="suggestedEquipmentList" class="equipment-items"></div>
-        </div>
+      <table id="bookingsTable">
+        <thead>
+          <tr>
+            <th>Equipment</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Booked by</th>
+            <th>Note</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
 
-        <div class="suggestion-grid">
-          <div>
-            <div class="suggestion-label">Suggested dates</div>
-            <div id="suggestedDateRange" class="suggestion-value"></div>
-          </div>
-
-          <div>
-            <div class="suggestion-label">Duration</div>
-            <div id="suggestedDuration" class="suggestion-value"></div>
-          </div>
-        </div>
-
-        <button id="useSuggestedSlotBtn" class="primary-btn" type="button">Use this slot</button>
-      </div>
-    </section>
-
-    <div id="nextStepBanner" class="next-step-banner" aria-live="polite">
-      <div class="next-step-title">Step 2 ready</div>
-      <div id="nextStepCopy" class="next-step-copy"></div>
-    </div>
-
-    <!-- CALENDAR -->
-    <div id="calendarSection" style="display: none; margin-top: 1rem">
-      <h3>2. Review available dates</h3>
-
-      <div class="calendar-instructions">
-        <strong>How to select dates:</strong> Click an available date to set your start date, then
-        click again to set your end date. The calendar shows booked dates in red (unavailable).
-        Click a third time to clear your selection.
+      <div id="noBookings" class="empty-state" style="display: none">
+        No bookings for this equipment.
       </div>
 
-      <div class="calendar-controls">
-        <button id="prevMonthBtn">◀</button>
-        <button id="nextMonthBtn">▶</button>
-        <button id="clearDatesBtn" type="button" style="display: none">Clear dates</button>
+      <!-- Equipment Search Section -->
+      <section class="step-card" style="margin-top: 40px">
         <div
-          id="calendarSelectionState"
-          class="calendar-selection-state"
-          style="display: none; margin-left: auto"
-        ></div>
-      </div>
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+          "
+        >
+          <h2>4. Search equipment bookings</h2>
+          <button id="toggleSearchBtn" class="secondary-btn" type="button" title="Show/hide search">
+            −
+          </button>
+        </div>
 
-      <div id="calendarWrapper">
-        <!-- calendars injected here -->
-      </div>
-    </div>
-
-    <!-- Step 2 -->
-    <section id="bookingSection" class="disabled">
-      <h2>2. Book this equipment</h2>
-      <p id="bookingSectionHint" class="step-copy">
-        Complete Step 1 first. When a suggestion is ready, review the dates below and then confirm
-        this booking here.
-      </p>
-
-      <div class="form-and-receipt-container">
-        <form id="bookingForm">
-          <div class="form-row">
-            <div>
-              <label for="startDate">Start date</label>
-              <input type="date" id="startDate" required />
-            </div>
-
-            <div>
-              <label for="endDate">End date</label>
-              <input type="date" id="endDate" required />
-            </div>
+        <div id="searchContent">
+          <div style="margin-bottom: 14px">
+            <label for="equipmentSearch">Select equipment</label>
+            <select id="equipmentSearch">
+              <option value="">-- Choose equipment --</option>
+            </select>
           </div>
 
-          <label for="bookedBy">Your name</label>
-          <input type="text" id="bookedBy" required />
+          <table id="equipmentBookingsTable" style="display: none">
+            <thead>
+              <tr>
+                <th>Equipment</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Booked by</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
 
-          <label for="note">Optional note</label>
-          <input type="text" id="note" />
-
-          <button type="submit" class="primary-btn">Book equipment</button>
-
-          <div id="formMessage"></div>
-        </form>
-
-        <div id="bookingReceiptCard" class="receipt-card">
-          <h3>Booking receipt</h3>
-          <textarea id="bookingReceiptText" class="receipt-text" readonly></textarea>
-          <button id="copyReceiptBtn" type="button" class="secondary-btn">Copy receipt</button>
+          <div id="noEquipmentBookings" class="empty-state" style="display: none">
+            No bookings for this equipment.
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center">
-      <button id="newBookingBtn" class="primary-btn" title="Start a new booking">
-        New Booking
-      </button>
-      <button
-        id="addDemoBtn"
-        class="secondary-btn"
-        style="display: none"
-        title="Add sample demo bookings"
-      >
-        Add demo bookings
-      </button>
-      <button
-        id="clearDemoBtn"
-        class="secondary-btn"
-        style="display: none"
-        title="Clear all demo bookings"
-      >
-        Clear demo bookings
-      </button>
+      <!-- ---------- Frontend logic ---------- -->
     </div>
-
-    <!-- Step 3 -->
-    <h2>3. Current bookings</h2>
-
-    <table id="bookingsTable">
-      <thead>
-        <tr>
-          <th>Equipment</th>
-          <th>Start</th>
-          <th>End</th>
-          <th>Booked by</th>
-          <th>Note</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-
-    <div id="noBookings" class="empty-state" style="display: none">
-      No bookings for this equipment.
-    </div>
-
-    <!-- Equipment Search Section -->
-    <section class="step-card" style="margin-top: 40px">
-      <div
-        style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 12px;
-        "
-      >
-        <h2>4. Search equipment bookings</h2>
-        <button id="toggleSearchBtn" class="secondary-btn" type="button" title="Show/hide search">
-          −
-        </button>
-      </div>
-
-      <div id="searchContent">
-        <div style="margin-bottom: 14px">
-          <label for="equipmentSearch">Select equipment</label>
-          <select id="equipmentSearch">
-            <option value="">-- Choose equipment --</option>
-          </select>
-        </div>
-
-        <table id="equipmentBookingsTable" style="display: none">
-          <thead>
-            <tr>
-              <th>Equipment</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Booked by</th>
-              <th>Note</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-
-        <div id="noEquipmentBookings" class="empty-state" style="display: none">
-          No bookings for this equipment.
-        </div>
-      </div>
-    </section>
-
-    <!-- ---------- Frontend logic ---------- -->
+    <!-- end .page-content -->
     <script src="app.js"></script>
   </body>
 </html>
