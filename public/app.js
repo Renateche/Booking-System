@@ -42,6 +42,8 @@ const pageSubtitle = document.getElementById('pageSubtitle');
 // ----------------------------------------------------
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const newBookingBtn = document.getElementById('newBookingBtn');
+const addDemoBtn = document.getElementById('addDemoBtn');
+const clearDemoBtn = document.getElementById('clearDemoBtn');
 
 // Equipment search section references
 const equipmentSearchSelect = document.getElementById('equipmentSearch');
@@ -94,6 +96,23 @@ if (appConfig.demoMode && demoBadge) {
 
 if (appConfig.demoMode && pageSubtitle) {
   pageSubtitle.textContent = 'Sample data only';
+}
+
+if (appConfig.demoMode && addDemoBtn) {
+  addDemoBtn.style.display = 'inline-block';
+  addDemoBtn.addEventListener('click', () => {
+    window.bookingDemoApi.addSeedBookings();
+    startNewBooking();
+  });
+}
+
+if (appConfig.demoMode && clearDemoBtn) {
+  clearDemoBtn.style.display = 'inline-block';
+  clearDemoBtn.addEventListener('click', () => {
+    if (!confirm('Clear all demo bookings?')) return;
+    window.bookingDemoApi.clear();
+    startNewBooking();
+  });
 }
 
 function apiFetch(path, options) {

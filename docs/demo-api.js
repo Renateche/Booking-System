@@ -160,6 +160,36 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
   }
 
+  function getBookingSignature(booking) {
+    return [
+      booking.equipment_id,
+      booking.start_datetime,
+      booking.end_datetime,
+      booking.booked_by,
+      booking.note || ''
+    ].join('|');
+  }
+
+  function addSeedBookings() {
+    const currentBookings = loadBookings();
+    const existingSignatures = new Set(currentBookings.map(getBookingSignature));
+    const nextBookings = [...currentBookings];
+    let nextId = currentBookings.reduce((maxId, booking) => Math.max(maxId, booking.id), 0) + 1;
+
+    seedBookings().forEach((booking) => {
+      if (existingSignatures.has(getBookingSignature(booking))) {
+        return;
+      }
+
+      nextBookings.push({
+        ...booking,
+        id: nextId++
+      });
+    });
+
+    saveBookings(nextBookings);
+  }
+
   function createJsonResponse(body, status) {
     return Promise.resolve({
       ok: status >= 200 && status < 300,
@@ -323,7 +353,9 @@
         throw error;
       }
 
-      const equipmentBookings = bookings.filter((booking) => booking.equipment_id === equipmentIdValue);
+      const equipmentBookings = bookings.filter(
+        (booking) => booking.equipment_id === equipmentIdValue
+      );
       if (hasOverlap(equipmentBookings, candidateStart, candidateEnd)) {
         const error = new Error(`Booking overlaps an existing booking for ${equipment.name}`);
         error.status = 400;
@@ -386,8 +418,8 @@
     if (url.pathname === '/equipment-types' && method === 'GET') {
       return {
         status: 200,
-        body: [...new Set(demoEquipment.map((equipment) => equipment.equipment_type))].sort((left, right) =>
-          left.localeCompare(right)
+        body: [...new Set(demoEquipment.map((equipment) => equipment.equipment_type))].sort(
+          (left, right) => left.localeCompare(right)
         )
       };
     }
@@ -418,7 +450,8 @@
     }
 
     if (url.pathname === '/bookings' && method === 'GET') {
-      const rawEquipmentIds = url.searchParams.get('equipmentIds') || url.searchParams.get('equipmentId') || '';
+      const rawEquipmentIds =
+        url.searchParams.get('equipmentIds') || url.searchParams.get('equipmentId') || '';
       const equipmentIds = String(rawEquipmentIds)
         .split(',')
         .map((value) => Number.parseInt(value.trim(), 10))
@@ -466,6 +499,10 @@
         return createJsonResponse({ error: error.message }, error.status || 500);
       }
     },
+    clear() {
+      saveBookings([]);
+    },
+    addSeedBookings,
     reset() {
       localStorage.removeItem(STORAGE_KEY);
     }

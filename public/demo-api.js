@@ -160,6 +160,36 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
   }
 
+  function getBookingSignature(booking) {
+    return [
+      booking.equipment_id,
+      booking.start_datetime,
+      booking.end_datetime,
+      booking.booked_by,
+      booking.note || ''
+    ].join('|');
+  }
+
+  function addSeedBookings() {
+    const currentBookings = loadBookings();
+    const existingSignatures = new Set(currentBookings.map(getBookingSignature));
+    const nextBookings = [...currentBookings];
+    let nextId = currentBookings.reduce((maxId, booking) => Math.max(maxId, booking.id), 0) + 1;
+
+    seedBookings().forEach((booking) => {
+      if (existingSignatures.has(getBookingSignature(booking))) {
+        return;
+      }
+
+      nextBookings.push({
+        ...booking,
+        id: nextId++
+      });
+    });
+
+    saveBookings(nextBookings);
+  }
+
   function createJsonResponse(body, status) {
     return Promise.resolve({
       ok: status >= 200 && status < 300,
@@ -469,6 +499,10 @@
         return createJsonResponse({ error: error.message }, error.status || 500);
       }
     },
+    clear() {
+      saveBookings([]);
+    },
+    addSeedBookings,
     reset() {
       localStorage.removeItem(STORAGE_KEY);
     }
