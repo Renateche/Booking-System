@@ -212,6 +212,7 @@ function startNewBooking() {
   document.querySelectorAll('input[name="equipmentType"]').forEach((checkbox) => {
     checkbox.checked = false;
   });
+  renderSelectedTypeChips();
 
   // Reset duration
   document.getElementById('bookingDurationDays').value = '1';
