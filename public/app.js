@@ -230,6 +230,11 @@ function startNewBooking() {
   // Hide receipt
   hideBookingReceipt();
 
+  // Hide calendar section
+  calendarSection.style.display = 'none';
+  bookingsTableBody.innerHTML = '';
+  calendarOffset = 0;
+
   // Reset selection and calendar
   resetSelection();
 
