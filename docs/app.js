@@ -188,7 +188,10 @@ function syncFormWithCalendar(showFeedback = false) {
     }, 1500);
 
     // Scroll form into view if needed
-    if (bookingForm.offsetParent === null || bookingForm.getBoundingClientRect().bottom < window.innerHeight) {
+    if (
+      bookingForm.offsetParent === null ||
+      bookingForm.getBoundingClientRect().bottom < window.innerHeight
+    ) {
       // Form is visible or below viewport, no scroll needed
     } else {
       bookingForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -640,7 +643,7 @@ function updateCalendarSelectionState() {
 
   const startFormatted = new Date(selectedStartDate).toLocaleDateString('en-US', {
     month: 'short',
-    day: 'numeric',
+    day: 'numeric'
   });
 
   if (!selectedEndDate) {
@@ -648,9 +651,11 @@ function updateCalendarSelectionState() {
   } else {
     const endFormatted = new Date(selectedEndDate).toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric',
+      day: 'numeric'
     });
-    const dayCount = Math.floor((new Date(selectedEndDate) - new Date(selectedStartDate)) / (1000 * 60 * 60 * 24));
+    const dayCount = Math.floor(
+      (new Date(selectedEndDate) - new Date(selectedStartDate)) / (1000 * 60 * 60 * 24)
+    );
     calendarSelectionState.textContent = `${startFormatted} – ${endFormatted} (${dayCount} day${dayCount !== 1 ? 's' : ''})`;
   }
 }

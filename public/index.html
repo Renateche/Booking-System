@@ -267,6 +267,7 @@
 
       .calendar-day.booked .calendar-booked-by {
         opacity: 1;
+        text-decoration: none;
       }
 
       .calendar-day.selected {
@@ -734,14 +735,20 @@
       <h3>2. Review available dates</h3>
 
       <div class="calendar-instructions">
-        <strong>How to select dates:</strong> Click an available date to set your start date, then click again to set your end date. The calendar shows booked dates in red (unavailable). Click a third time to clear your selection.
+        <strong>How to select dates:</strong> Click an available date to set your start date, then
+        click again to set your end date. The calendar shows booked dates in red (unavailable).
+        Click a third time to clear your selection.
       </div>
 
       <div class="calendar-controls">
         <button id="prevMonthBtn">◀</button>
         <button id="nextMonthBtn">▶</button>
         <button id="clearDatesBtn" type="button" style="display: none">Clear dates</button>
-        <div id="calendarSelectionState" class="calendar-selection-state" style="display: none; margin-left: auto"></div>
+        <div
+          id="calendarSelectionState"
+          class="calendar-selection-state"
+          style="display: none; margin-left: auto"
+        ></div>
       </div>
 
       <div id="calendarWrapper">
