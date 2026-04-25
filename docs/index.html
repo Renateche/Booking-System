@@ -522,6 +522,44 @@
         color: var(--text-secondary);
       }
 
+      /* Equipment list in suggestion */
+      .suggestion-equipment-list {
+        margin-bottom: 14px;
+      }
+
+      .equipment-items {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .equipment-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px;
+        background: var(--bg-panel);
+        border-radius: 4px;
+        border-left: 3px solid var(--accent);
+      }
+
+      .equipment-item-name {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .equipment-item-type {
+        font-size: 11px;
+        color: var(--text-secondary);
+        background: var(--bg-subtle);
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-left: 8px;
+        white-space: nowrap;
+      }
+
       .flow-guide {
         display: flex;
         flex-wrap: wrap;
@@ -697,17 +735,12 @@
       <div id="suggestedSlotCard" class="suggestion-card">
         <h3>Suggested slot</h3>
 
+        <div class="suggestion-equipment-list">
+          <div class="suggestion-label">Equipment to book</div>
+          <div id="suggestedEquipmentList" class="equipment-items"></div>
+        </div>
+
         <div class="suggestion-grid">
-          <div>
-            <div class="suggestion-label">Equipment</div>
-            <div id="suggestedEquipmentName" class="suggestion-value"></div>
-          </div>
-
-          <div>
-            <div class="suggestion-label">Requested types</div>
-            <div id="suggestedEquipmentType" class="suggestion-value"></div>
-          </div>
-
           <div>
             <div class="suggestion-label">Suggested dates</div>
             <div id="suggestedDateRange" class="suggestion-value"></div>

@@ -35,6 +35,7 @@ const suggestedEquipmentNameEl = document.getElementById('suggestedEquipmentName
 const suggestedEquipmentTypeEl = document.getElementById('suggestedEquipmentType');
 const suggestedDateRangeEl = document.getElementById('suggestedDateRange');
 const suggestedDurationEl = document.getElementById('suggestedDuration');
+const suggestedEquipmentList = document.getElementById('suggestedEquipmentList');
 const useSuggestedSlotBtn = document.getElementById('useSuggestedSlotBtn');
 const demoBadge = document.getElementById('demoBadge');
 const pageSubtitle = document.getElementById('pageSubtitle');
@@ -380,10 +381,26 @@ function renderSuggestedSlot() {
     return;
   }
 
-  suggestedEquipmentNameEl.textContent = suggestedSlot.equipments
-    .map((equipment) => formatEquipmentSummary(equipment))
-    .join(', ');
-  suggestedEquipmentTypeEl.textContent = suggestedSlot.requestedTypes.join(', ');
+  if (suggestedEquipmentList) {
+    suggestedEquipmentList.innerHTML = '';
+    suggestedSlot.equipments.forEach((equipment) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'equipment-item';
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'equipment-item-name';
+      nameDiv.textContent = formatEquipmentSummary(equipment);
+
+      const typeDiv = document.createElement('div');
+      typeDiv.className = 'equipment-item-type';
+      typeDiv.textContent = equipment.equipmentType;
+
+      itemDiv.appendChild(nameDiv);
+      itemDiv.appendChild(typeDiv);
+      suggestedEquipmentList.appendChild(itemDiv);
+    });
+  }
+
   suggestedDateRangeEl.textContent = `${formatDisplayDate(suggestedSlot.startDate)} to ${formatDisplayDate(suggestedSlot.endDate)}`;
   suggestedDurationEl.textContent = `${suggestedSlot.durationDays} day${suggestedSlot.durationDays === 1 ? '' : 's'}`;
   suggestionMessageEl.textContent =
@@ -776,20 +793,20 @@ function refreshCalendar() {
 // ----------------------------------------------------
 // Navigation
 // ----------------------------------------------------
-prevMonthBtn.addEventListener('click', () => {
+prevMonthBtn?.addEventListener('click', () => {
   if (calendarOffset > -MAX_MONTH_OFFSET) {
     calendarOffset--;
     refreshCalendar();
   }
 });
 
-nextMonthBtn.addEventListener('click', () => {
+nextMonthBtn?.addEventListener('click', () => {
   if (calendarOffset < MAX_MONTH_OFFSET) {
     calendarOffset++;
     refreshCalendar();
   }
 });
-clearDatesBtn.addEventListener('click', () => {
+clearDatesBtn?.addEventListener('click', () => {
   selectedStartDate = null;
   selectedEndDate = null;
   syncFormWithCalendar();
