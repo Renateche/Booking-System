@@ -284,22 +284,292 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+
+      /* ======================Step 1=========================== */
+
+      .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .step-card {
+        background: var(--bg-panel);
+        border-radius: var(--radius);
+        border: 1px solid var(--border-subtle);
+        box-shadow: var(--shadow);
+        padding: 16px 20px;
+        margin-bottom: 20px;
+      }
+
+      .step-copy {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin: 0 0 14px 0;
+      }
+
+      .selected-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 30px;
+        margin-bottom: 14px;
+      }
+
+      .selected-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+        font-size: 12px;
+      }
+
+      .selected-chip button {
+        background: transparent;
+        color: var(--text-secondary);
+        padding: 0;
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      .type-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .type-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border-subtle);
+        border-radius: 6px;
+        background: var(--bg-subtle);
+      }
+
+      .type-option input {
+        margin: 0;
+      }
+
+      .type-option label {
+        margin: 0;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .duration-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+        gap: 14px;
+        align-items: end;
+        margin-bottom: 14px;
+      }
+
+      .duration-row input {
+        width: 80px;
+      }
+
+      .suggestion-card {
+        display: none;
+        margin-top: 14px;
+        padding: 14px 16px;
+        border-radius: 6px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-subtle);
+      }
+
+      .suggestion-card h3 {
+        margin: 0 0 12px 0;
+        font-size: 13px;
+      }
+
+      .suggestion-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .suggestion-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .suggestion-value {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .field-note {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .form-and-receipt-container {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+      }
+
+      .form-and-receipt-container #bookingForm {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .form-and-receipt-container .receipt-card {
+        flex: 0 1 350px;
+      }
+
+      .receipt-card {
+        display: none;
+        padding: 14px 16px;
+        border-radius: 6px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-subtle);
+      }
+
+      .receipt-card h3 {
+        margin: 0 0 10px 0;
+        font-size: 13px;
+      }
+
+      .receipt-text {
+        width: 100%;
+        min-height: 130px;
+        resize: vertical;
+        margin-bottom: 10px;
+        font-family: Consolas, 'Courier New', monospace;
+      }
+
+      .secondary-btn {
+        background: var(--bg-panel);
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+      }
+
+      .secondary-btn:hover {
+        background: var(--bg-hover);
+      }
+
+      .step-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
+      }
+
+      .step-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      @media (max-width: 900px) {
+        #calendarWrapper {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        body {
+          padding: 16px;
+        }
+
+        .page-header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .step-actions {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .duration-row {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
-  <div style="display: flex; justify-content: space-between; align-items: center">
-    <div>
-      <h1>Equipment Booking</h1>
-      <div class="subtitle">Internal QRF tool – shared bookings</div>
+  <body>
+    <div class="page-header">
+      <div>
+        <h1>Equipment Booking</h1>
+        <div class="subtitle">Internal QRF tool – shared bookings</div>
+      </div>
+
+      <button id="themeToggleBtn" title="Toggle dark mode">🌙</button>
     </div>
 
-    <button id="themeToggleBtn" title="Toggle dark mode">🌙</button>
-  </div>
-  <body>
-    <!-- Step 1 -->
-    <h2>1. Select equipment</h2>
-    <select id="equipmentSelect">
-      <option value="">-- Choose equipment --</option>
-    </select>
+    <section class="step-card">
+      <h2>1. Choose equipment type</h2>
+      <p class="step-copy">
+        Choose one or more types and how long you need the equipment for. The app will suggest the
+        earliest matching slot.
+      </p>
+
+      <div class="field-note" style="margin-bottom: 14px">
+        Suggestions use whole days and look across all equipment that matches the selected types.
+      </div>
+
+      <div id="selectedTypeChips" class="selected-chips" aria-live="polite"></div>
+      <div id="typeOptions" class="type-options"></div>
+
+      <div class="duration-row">
+        <div>
+          <label for="bookingDurationDays">Booking length (days)</label>
+          <input id="bookingDurationDays" type="number" min="1" step="1" value="1" />
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button id="suggestAvailabilityBtn" class="primary-btn" type="button" disabled>
+          Suggest availability
+        </button>
+        <div id="suggestionMessage" class="step-hint">
+          Choose at least one type to request a suggested slot.
+        </div>
+      </div>
+
+      <div id="suggestedSlotCard" class="suggestion-card">
+        <h3>Suggested slot</h3>
+
+        <div class="suggestion-grid">
+          <div>
+            <div class="suggestion-label">Equipment</div>
+            <div id="suggestedEquipmentName" class="suggestion-value"></div>
+          </div>
+
+          <div>
+            <div class="suggestion-label">Requested types</div>
+            <div id="suggestedEquipmentType" class="suggestion-value"></div>
+          </div>
+
+          <div>
+            <div class="suggestion-label">Suggested dates</div>
+            <div id="suggestedDateRange" class="suggestion-value"></div>
+          </div>
+
+          <div>
+            <div class="suggestion-label">Duration</div>
+            <div id="suggestedDuration" class="suggestion-value"></div>
+          </div>
+        </div>
+
+        <button id="useSuggestedSlotBtn" class="primary-btn" type="button">Use this slot</button>
+      </div>
+    </section>
+
     <!-- CALENDAR -->
     <div id="calendarSection" style="display: none; margin-top: 1rem">
       <h3>Availability (booked days in red)</h3>
@@ -319,30 +589,44 @@
     <section id="bookingSection" class="disabled">
       <h2>2. Book this equipment</h2>
 
-      <form id="bookingForm">
-        <div class="form-row">
-          <div>
-            <label for="startDate">Start date</label>
-            <input type="date" id="startDate" required />
+      <div class="form-and-receipt-container">
+        <form id="bookingForm">
+          <div class="form-row">
+            <div>
+              <label for="startDate">Start date</label>
+              <input type="date" id="startDate" required />
+            </div>
+
+            <div>
+              <label for="endDate">End date</label>
+              <input type="date" id="endDate" required />
+            </div>
           </div>
 
-          <div>
-            <label for="endDate">End date</label>
-            <input type="date" id="endDate" required />
-          </div>
+          <label for="bookedBy">Your name</label>
+          <input type="text" id="bookedBy" required />
+
+          <label for="note">Optional note</label>
+          <input type="text" id="note" />
+
+          <button type="submit" class="primary-btn">Book equipment</button>
+
+          <div id="formMessage"></div>
+        </form>
+
+        <div id="bookingReceiptCard" class="receipt-card">
+          <h3>Booking receipt</h3>
+          <textarea id="bookingReceiptText" class="receipt-text" readonly></textarea>
+          <button id="copyReceiptBtn" type="button" class="secondary-btn">Copy receipt</button>
         </div>
-
-        <label for="bookedBy">Your name</label>
-        <input type="text" id="bookedBy" required />
-
-        <label for="note">Optional note</label>
-        <input type="text" id="note" />
-
-        <button type="submit" class="primary-btn">Book equipment</button>
-
-        <div id="formMessage"></div>
-      </form>
+      </div>
     </section>
+
+    <div style="margin-bottom: 20px">
+      <button id="newBookingBtn" class="primary-btn" title="Start a new booking">
+        New Booking
+      </button>
+    </div>
 
     <!-- Step 3 -->
     <h2>3. Current bookings</h2>
@@ -350,6 +634,7 @@
     <table id="bookingsTable">
       <thead>
         <tr>
+          <th>Equipment</th>
           <th>Start</th>
           <th>End</th>
           <th>Booked by</th>
@@ -363,6 +648,49 @@
     <div id="noBookings" class="empty-state" style="display: none">
       No bookings for this equipment.
     </div>
+
+    <!-- Equipment Search Section -->
+    <section class="step-card" style="margin-top: 40px">
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        "
+      >
+        <h2>4. Search equipment bookings</h2>
+        <button id="toggleSearchBtn" class="secondary-btn" type="button" title="Show/hide search">
+          −
+        </button>
+      </div>
+
+      <div id="searchContent">
+        <div style="margin-bottom: 14px">
+          <label for="equipmentSearch">Select equipment</label>
+          <select id="equipmentSearch">
+            <option value="">-- Choose equipment --</option>
+          </select>
+        </div>
+
+        <table id="equipmentBookingsTable" style="display: none">
+          <thead>
+            <tr>
+              <th>Equipment</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Booked by</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+        <div id="noEquipmentBookings" class="empty-state" style="display: none">
+          No bookings for this equipment.
+        </div>
+      </div>
+    </section>
 
     <!-- ---------- Frontend logic ---------- -->
     <script src="app.js"></script>

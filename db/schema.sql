@@ -6,18 +6,18 @@ CREATE TABLE IF NOT EXISTS cpc_equipment (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     name TEXT NOT NULL,                     -- e.g. HMI-PC1
-    model TEXT NOT NULL,                    -- e.g. Matrix MXE-5104
+    equipment_type TEXT,                    -- e.g. HMI
+    model TEXT,                             -- e.g. Matrix MXE-5104
     cimplicity_version TEXT,                -- e.g. 8.2
     switch_port TEXT,                       -- e.g. 17/1
-    ip_address TEXT NOT NULL,               -- e.g. 192.168.6.1
-    subnet_mask TEXT NOT NULL,              -- e.g. 255.255.255.0
-    gateway TEXT NOT NULL,                  -- e.g. 192.168.6.254
+    ip_address TEXT,                        -- e.g. 192.168.6.1
+    subnet_mask TEXT,                       -- e.g. 255.255.255.0
+    gateway TEXT,                           -- e.g. 192.168.6.254
     notes TEXT
+    ,OS TEXT
+    ,location_2 TEXT
+    ,location TEXT
 );
-
--- Prevent duplicate equipment names
-CREATE UNIQUE INDEX IF NOT EXISTS idx_cpc_equipment_name
-ON cpc_equipment(name);
 
 -- Prevent duplicate IP addresses
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cpc_equipment_ip
