@@ -19,6 +19,8 @@ const calendarSection = document.getElementById('calendarSection');
 const calendarWrapper = document.getElementById('calendarWrapper');
 const prevMonthBtn = document.getElementById('prevMonthBtn');
 const nextMonthBtn = document.getElementById('nextMonthBtn');
+const clearDatesBtn = document.getElementById('clearDatesBtn');
+const calendarSelectionState = document.getElementById('calendarSelectionState');
 
 // ----------------------------------------------------
 // Step 1 – Type suggestion references
@@ -36,6 +38,9 @@ const suggestedDurationEl = document.getElementById('suggestedDuration');
 const useSuggestedSlotBtn = document.getElementById('useSuggestedSlotBtn');
 const demoBadge = document.getElementById('demoBadge');
 const pageSubtitle = document.getElementById('pageSubtitle');
+const nextStepBanner = document.getElementById('nextStepBanner');
+const nextStepCopy = document.getElementById('nextStepCopy');
+const bookingSectionHint = document.getElementById('bookingSectionHint');
 
 // ----------------------------------------------------
 // Theme toggle
@@ -128,6 +133,33 @@ function apiFetch(path, options) {
 // ----------------------------------------------------
 function setBookingSectionEnabled(enabled) {
   bookingSection.classList.toggle('disabled', !enabled);
+
+  if (bookingSectionHint) {
+    bookingSectionHint.textContent = enabled
+      ? 'Step 2: confirm the suggested dates below, adjust them if needed, then submit the form.'
+      : 'Complete Step 1 first. When a suggestion is ready, review the dates below and then confirm this booking here.';
+  }
+}
+
+function hideNextStepBanner() {
+  if (nextStepBanner) {
+    nextStepBanner.style.display = 'none';
+  }
+}
+
+function showNextStepBanner(message) {
+  if (!nextStepBanner || !nextStepCopy) {
+    return;
+  }
+
+  nextStepCopy.textContent = message;
+  nextStepBanner.style.display = 'block';
+}
+
+function scrollToReviewStep() {
+  const target = calendarSection.style.display !== 'none' ? calendarSection : bookingSection;
+
+  target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function addOneDay(dateStr) {
@@ -141,9 +173,27 @@ function formatMonthYear(date) {
   return date.toLocaleString('en-GB', { month: 'long', year: 'numeric' });
 }
 
-function syncFormWithCalendar() {
+function syncFormWithCalendar(showFeedback = false) {
   startInput.value = selectedStartDate || '';
   endInput.value = selectedEndDate || selectedStartDate || '';
+
+  if (showFeedback && selectedStartDate) {
+    // Flash highlight on form date inputs
+    startInput.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+    endInput.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+
+    setTimeout(() => {
+      startInput.style.backgroundColor = '';
+      endInput.style.backgroundColor = '';
+    }, 1500);
+
+    // Scroll form into view if needed
+    if (bookingForm.offsetParent === null || bookingForm.getBoundingClientRect().bottom < window.innerHeight) {
+      // Form is visible or below viewport, no scroll needed
+    } else {
+      bookingForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
 }
 
 function resetSelection() {
@@ -164,6 +214,7 @@ function startNewBooking() {
 
   // Clear suggestion state
   clearSuggestionState();
+  hideNextStepBanner();
   activeEquipmentIds = [];
   activeEquipmentSummaries = [];
 
@@ -199,6 +250,7 @@ function clearSuggestionState(message = 'Choose at least one type to request a s
   suggestedSlot = null;
   suggestedSlotCardEl.style.display = 'none';
   suggestionMessageEl.textContent = message;
+  hideNextStepBanner();
 }
 
 function hideBookingReceipt() {
@@ -332,7 +384,7 @@ function renderSuggestedSlot() {
   suggestedDateRangeEl.textContent = `${formatDisplayDate(suggestedSlot.startDate)} to ${formatDisplayDate(suggestedSlot.endDate)}`;
   suggestedDurationEl.textContent = `${suggestedSlot.durationDays} day${suggestedSlot.durationDays === 1 ? '' : 's'}`;
   suggestionMessageEl.textContent =
-    'Suggestion ready. The calendar preview and booking form are loaded below.';
+    'Step 1 complete. Review the suggested dates below, then confirm the booking form in Step 2.';
   suggestedSlotCardEl.style.display = 'block';
 }
 
@@ -363,6 +415,10 @@ function previewSuggestedEquipment(equipments, suggestedDates) {
       syncFormWithCalendar();
       refreshCalendar();
       loadBookings(activeEquipmentIds);
+      showNextStepBanner(
+        'Review the suggested dates in the calendar, then use the booking form below to confirm this reservation.'
+      );
+      scrollToReviewStep();
     });
 }
 
@@ -558,10 +614,52 @@ function getBookedDateMap(bookings) {
   return map;
 }
 
+// Helper function to show feedback toast
+function showFeedbackToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'date-feedback-toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'slideInUp 0.3s ease-out reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
+// Helper function to update calendar selection state display
+function updateCalendarSelectionState() {
+  if (!selectedStartDate) {
+    calendarSelectionState.style.display = 'none';
+    clearDatesBtn.style.display = 'none';
+    return;
+  }
+
+  clearDatesBtn.style.display = 'block';
+  calendarSelectionState.style.display = 'block';
+
+  const startFormatted = new Date(selectedStartDate).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+
+  if (!selectedEndDate) {
+    calendarSelectionState.textContent = `Start: ${startFormatted} (click again to set end date)`;
+  } else {
+    const endFormatted = new Date(selectedEndDate).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+    const dayCount = Math.floor((new Date(selectedEndDate) - new Date(selectedStartDate)) / (1000 * 60 * 60 * 24));
+    calendarSelectionState.textContent = `${startFormatted} – ${endFormatted} (${dayCount} day${dayCount !== 1 ? 's' : ''})`;
+  }
+}
+
 function onCalendarDateClick(dateStr) {
   if (!selectedStartDate) {
     selectedStartDate = dateStr;
     selectedEndDate = null;
+    showFeedbackToast('✓ Start date set');
   } else if (!selectedEndDate) {
     if (dateStr < selectedStartDate) {
       selectedEndDate = selectedStartDate;
@@ -569,12 +667,14 @@ function onCalendarDateClick(dateStr) {
     } else {
       selectedEndDate = dateStr;
     }
+    showFeedbackToast('✓ End date set');
   } else {
     selectedStartDate = dateStr;
     selectedEndDate = null;
+    showFeedbackToast('✓ Selection reset');
   }
 
-  syncFormWithCalendar();
+  syncFormWithCalendar(true);
   refreshCalendar();
 }
 
@@ -665,6 +765,7 @@ function renderTwoMonthCalendar(bookedDateMap) {
 function refreshCalendar() {
   const bookedDateMap = getBookedDateMap(currentBookings);
   renderTwoMonthCalendar(bookedDateMap);
+  updateCalendarSelectionState();
 }
 
 // ----------------------------------------------------
@@ -683,7 +784,13 @@ nextMonthBtn.addEventListener('click', () => {
     refreshCalendar();
   }
 });
-
+clearDatesBtn.addEventListener('click', () => {
+  selectedStartDate = null;
+  selectedEndDate = null;
+  syncFormWithCalendar();
+  refreshCalendar();
+  showFeedbackToast('✓ Dates cleared');
+});
 // ----------------------------------------------------
 // Create booking (whole days)
 // ----------------------------------------------------

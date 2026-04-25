@@ -256,12 +256,24 @@
         background: var(--calendar-booked-bg);
         color: var(--calendar-booked-text);
         font-weight: 600;
+        cursor: not-allowed;
+        opacity: 0.6;
+        text-decoration: line-through;
+      }
+
+      .calendar-day.booked:hover {
+        background: var(--calendar-booked-bg);
+      }
+
+      .calendar-day.booked .calendar-booked-by {
+        opacity: 1;
       }
 
       .calendar-day.selected {
         background: var(--calendar-selected-bg);
         border-color: var(--accent);
         font-weight: 600;
+        box-shadow: inset 0 0 0 2px var(--accent);
       }
 
       .calendar-day.range {
@@ -271,6 +283,84 @@
       .calendar-day:hover:not(.booked) {
         background: var(--bg-hover);
         cursor: pointer;
+      }
+
+      /* Calendar instructions */
+      .calendar-instructions {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background: var(--bg-subtle);
+        border-radius: var(--radius);
+        line-height: 1.4;
+      }
+
+      .calendar-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      #clearDatesBtn {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        border: 1px solid var(--border);
+        background: var(--bg-subtle);
+        color: var(--text);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      #clearDatesBtn:hover {
+        background: var(--bg-hover);
+        border-color: var(--text-secondary);
+      }
+
+      #clearDatesBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Date feedback toast */
+      .date-feedback-toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: var(--bg-panel);
+        border: 1px solid var(--accent);
+        border-radius: var(--radius);
+        padding: 1rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        color: var(--text);
+        font-size: 0.9rem;
+        z-index: 1000;
+        animation: slideInUp 0.3s ease-out;
+      }
+
+      @keyframes slideInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Selection state display */
+      .calendar-selection-state {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background: var(--bg-subtle);
+        border-left: 3px solid var(--accent);
+        border-radius: 2px;
       }
 
       /* Booker name */
@@ -433,6 +523,44 @@
         color: var(--text-secondary);
       }
 
+      .flow-guide {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 14px 0;
+      }
+
+      .flow-step {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border-subtle);
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .next-step-banner {
+        display: none;
+        margin: 0 0 16px 0;
+        padding: 12px 14px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 120, 212, 0.25);
+        background: var(--calendar-range-bg);
+      }
+
+      .next-step-title {
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .next-step-copy {
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
       .form-and-receipt-container {
         display: flex;
         gap: 20px;
@@ -538,6 +666,12 @@
         earliest matching slot.
       </p>
 
+      <div class="flow-guide" aria-label="Booking flow overview">
+        <div class="flow-step">1. Choose types</div>
+        <div class="flow-step">2. Review the suggested dates below</div>
+        <div class="flow-step">3. Confirm and submit the booking form</div>
+      </div>
+
       <div class="field-note" style="margin-bottom: 14px">
         Suggestions use whole days and look across all equipment that matches the selected types.
       </div>
@@ -590,14 +724,24 @@
       </div>
     </section>
 
+    <div id="nextStepBanner" class="next-step-banner" aria-live="polite">
+      <div class="next-step-title">Step 2 ready</div>
+      <div id="nextStepCopy" class="next-step-copy"></div>
+    </div>
+
     <!-- CALENDAR -->
     <div id="calendarSection" style="display: none; margin-top: 1rem">
-      <h3>Availability (booked days in red)</h3>
+      <h3>2. Review available dates</h3>
 
-      <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem">
+      <div class="calendar-instructions">
+        <strong>How to select dates:</strong> Click an available date to set your start date, then click again to set your end date. The calendar shows booked dates in red (unavailable). Click a third time to clear your selection.
+      </div>
+
+      <div class="calendar-controls">
         <button id="prevMonthBtn">◀</button>
         <button id="nextMonthBtn">▶</button>
-        <span style="font-size: 0.85rem; color: #666"> Some Text </span>
+        <button id="clearDatesBtn" type="button" style="display: none">Clear dates</button>
+        <div id="calendarSelectionState" class="calendar-selection-state" style="display: none; margin-left: auto"></div>
       </div>
 
       <div id="calendarWrapper">
@@ -608,6 +752,10 @@
     <!-- Step 2 -->
     <section id="bookingSection" class="disabled">
       <h2>2. Book this equipment</h2>
+      <p id="bookingSectionHint" class="step-copy">
+        Complete Step 1 first. When a suggestion is ready, review the dates below and then confirm
+        this booking here.
+      </p>
 
       <div class="form-and-receipt-container">
         <form id="bookingForm">
