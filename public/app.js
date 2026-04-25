@@ -749,7 +749,10 @@ function renderSingleMonth(baseDate, bookedDateMap) {
 
       const nameEl = document.createElement('div');
       nameEl.className = 'calendar-booked-by';
-      nameEl.textContent = bookedByList.join(', ');
+      bookedByList.forEach((name, i) => {
+        if (i > 0) nameEl.appendChild(document.createElement('br'));
+        nameEl.appendChild(document.createTextNode(name));
+      });
 
       cell.appendChild(nameEl);
     } else {
