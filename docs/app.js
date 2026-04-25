@@ -438,7 +438,6 @@ function previewSuggestedEquipment(equipments, suggestedDates) {
       showNextStepBanner(
         'Review the suggested dates in the calendar, then use the booking form below to confirm this reservation.'
       );
-      scrollToReviewStep();
     });
 }
 
