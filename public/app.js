@@ -209,9 +209,7 @@ function resetSelection() {
 function startNewBooking() {
   // Clear all type selections
   selectedTypes.clear();
-  document.querySelectorAll('input[name="equipmentType"]').forEach((checkbox) => {
-    checkbox.checked = false;
-  });
+  renderTypeOptions();
   renderSelectedTypeChips();
 
   // Reset duration
