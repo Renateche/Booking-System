@@ -125,7 +125,9 @@ function findSuggestedPackage(equipmentByType, bookingsByEquipmentId, durationDa
           equipmentName: equipment.name,
           equipmentType: equipment.equipment_type,
           equipmentModel: equipment.model,
-          ipAddress: equipment.ip_address
+          ipAddress: equipment.ip_address,
+          operatingSystem: equipment.OS || null,
+          cimplicityVersion: equipment.cimplicity_version || null
         }))
       };
     }
@@ -333,10 +335,14 @@ app.get('/equipment', (req, res) => {
 // ---------- API: GET /equipment-types ----------
 app.get('/equipment-types', (req, res) => {
   const sql = `
-    SELECT DISTINCT equipment_type AS type
+    SELECT
+      equipment_type AS type,
+      GROUP_CONCAT(DISTINCT CASE WHEN OS IS NOT NULL AND TRIM(OS) != '' THEN OS END) AS osValues,
+      GROUP_CONCAT(DISTINCT CASE WHEN cimplicity_version IS NOT NULL AND TRIM(cimplicity_version) != '' THEN cimplicity_version END) AS versionValues
     FROM cpc_equipment
     WHERE equipment_type IS NOT NULL
       AND TRIM(equipment_type) != ''
+    GROUP BY equipment_type
     ORDER BY equipment_type
   `;
 
@@ -348,7 +354,23 @@ app.get('/equipment-types', (req, res) => {
       });
     }
 
-    res.json(rows.map((row) => row.type));
+    const result = rows.map((row) => ({
+      type: row.type,
+      osOptions: row.osValues
+        ? row.osValues
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+      versionOptions: row.versionValues
+        ? row.versionValues
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : []
+    }));
+
+    res.json(result);
   });
 });
 
@@ -360,6 +382,15 @@ app.get('/availability-suggestion', async (req, res) => {
     .map((type) => type.trim())
     .filter(Boolean);
   const durationDays = Number.parseInt(req.query.durationDays, 10);
+
+  let requirementsByType = {};
+  try {
+    if (req.query.requirements) {
+      requirementsByType = JSON.parse(req.query.requirements);
+    }
+  } catch (_) {
+    // ignore invalid JSON
+  }
 
   if (selectedTypes.length === 0) {
     return res.status(400).json({
@@ -375,9 +406,9 @@ app.get('/availability-suggestion', async (req, res) => {
 
   try {
     const typePlaceholders = selectedTypes.map(() => '?').join(', ');
-    const matchingEquipment = await allAsync(
+    const allMatchingEquipment = await allAsync(
       `
-        SELECT id, name, equipment_type, model, ip_address
+        SELECT id, name, equipment_type, model, ip_address, OS, cimplicity_version
         FROM cpc_equipment
         WHERE equipment_type IN (${typePlaceholders})
         ORDER BY name
@@ -385,9 +416,23 @@ app.get('/availability-suggestion', async (req, res) => {
       selectedTypes
     );
 
-    if (matchingEquipment.length === 0) {
+    if (allMatchingEquipment.length === 0) {
       return res.status(404).json({
         error: 'No equipment found for the selected types'
+      });
+    }
+
+    const matchingEquipment = allMatchingEquipment.filter((equipment) => {
+      const typeReqs = requirementsByType[equipment.equipment_type];
+      if (!typeReqs) return true;
+      if (typeReqs.os && equipment.OS !== typeReqs.os) return false;
+      if (typeReqs.version && equipment.cimplicity_version !== typeReqs.version) return false;
+      return true;
+    });
+
+    if (matchingEquipment.length === 0) {
+      return res.status(404).json({
+        error: 'No equipment found matching the selected OS/version requirements'
       });
     }
 

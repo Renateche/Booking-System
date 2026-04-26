@@ -90,6 +90,7 @@ let activeEquipmentIds = [];
 let activeEquipmentSummaries = [];
 let availableTypes = [];
 let selectedTypes = new Set();
+let selectedTypeRequirements = {};
 let suggestedSlot = null;
 
 const appConfig = window.BOOKING_APP_CONFIG || {};
@@ -209,6 +210,7 @@ function resetSelection() {
 function startNewBooking() {
   // Clear all type selections
   selectedTypes.clear();
+  selectedTypeRequirements = {};
   renderTypeOptions();
   renderSelectedTypeChips();
 
@@ -263,7 +265,16 @@ function clearSuggestionState(message = 'Choose at least one type to request a s
 
 function hideBookingReceipt() {
   bookingReceiptCardEl.style.display = 'none';
+  bookingReceiptCardEl.style.minHeight = '';
   bookingReceiptTextEl.value = '';
+}
+
+function syncBookingReceiptHeight() {
+  if (!bookingForm || !bookingReceiptCardEl || bookingReceiptCardEl.style.display === 'none') {
+    return;
+  }
+
+  bookingReceiptCardEl.style.minHeight = `${bookingForm.offsetHeight}px`;
 }
 
 function formatEquipmentSummary(equipment) {
@@ -291,7 +302,8 @@ function buildBookingReceipt({ equipments, requestedTypes, startDate, endDate, b
 
 function showBookingReceipt(receiptText) {
   bookingReceiptTextEl.value = receiptText;
-  bookingReceiptCardEl.style.display = 'block';
+  bookingReceiptCardEl.style.display = 'flex';
+  syncBookingReceiptHeight();
 }
 
 function getBookingsQuery(equipmentIds) {
@@ -307,6 +319,18 @@ function getBookingsQuery(equipmentIds) {
   }
 
   return `/bookings?equipmentIds=${filteredIds.join(',')}`;
+}
+
+function buildRequirementsPayload() {
+  const result = {};
+  for (const [type, reqs] of Object.entries(selectedTypeRequirements)) {
+    if (reqs.os || reqs.version) {
+      result[type] = {};
+      if (reqs.os) result[type].os = reqs.os;
+      if (reqs.version) result[type].version = reqs.version;
+    }
+  }
+  return result;
 }
 
 function updateSuggestButtonState() {
@@ -332,6 +356,7 @@ function renderSelectedTypeChips() {
       remove.textContent = '×';
       remove.onclick = () => {
         selectedTypes.delete(type);
+        delete selectedTypeRequirements[type];
         renderSelectedTypeChips();
         renderTypeOptions();
         clearSuggestionState();
@@ -346,6 +371,7 @@ function renderSelectedTypeChips() {
 function toggleTypeSelection(type) {
   if (selectedTypes.has(type)) {
     selectedTypes.delete(type);
+    delete selectedTypeRequirements[type];
   } else {
     selectedTypes.add(type);
   }
@@ -359,9 +385,15 @@ function toggleTypeSelection(type) {
 function renderTypeOptions() {
   typeOptionsEl.innerHTML = '';
 
-  availableTypes.forEach((type) => {
+  availableTypes.forEach((entry) => {
+    const type = typeof entry === 'string' ? entry : entry.type;
+    const osOptions = typeof entry === 'string' ? [] : (entry.osOptions || []);
+    const versionOptions = typeof entry === 'string' ? [] : (entry.versionOptions || []);
     const option = document.createElement('div');
     option.className = 'type-option';
+
+    const header = document.createElement('div');
+    header.className = 'type-option-header';
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -373,8 +405,63 @@ function renderTypeOptions() {
     label.htmlFor = checkbox.id;
     label.textContent = type;
 
-    option.appendChild(checkbox);
-    option.appendChild(label);
+    header.appendChild(checkbox);
+    header.appendChild(label);
+    option.appendChild(header);
+
+    if (selectedTypes.has(type) && (osOptions.length > 0 || versionOptions.length > 0)) {
+      const reqs = document.createElement('div');
+      reqs.className = 'type-requirements';
+
+      if (osOptions.length > 0) {
+        const reqRow = document.createElement('div');
+        reqRow.className = 'type-requirement';
+        const reqLabel = document.createElement('label');
+        reqLabel.textContent = 'OS:';
+        const sel = document.createElement('select');
+        sel.innerHTML = '<option value="">Any</option>';
+        osOptions.forEach((os) => {
+          const opt = document.createElement('option');
+          opt.value = os;
+          opt.textContent = os;
+          if ((selectedTypeRequirements[type] || {}).os === os) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', () => {
+          if (!selectedTypeRequirements[type]) selectedTypeRequirements[type] = {};
+          selectedTypeRequirements[type].os = sel.value;
+        });
+        reqRow.appendChild(reqLabel);
+        reqRow.appendChild(sel);
+        reqs.appendChild(reqRow);
+      }
+
+      if (versionOptions.length > 0) {
+        const reqRow = document.createElement('div');
+        reqRow.className = 'type-requirement';
+        const reqLabel = document.createElement('label');
+        reqLabel.textContent = 'Version:';
+        const sel = document.createElement('select');
+        sel.innerHTML = '<option value="">Any</option>';
+        versionOptions.forEach((ver) => {
+          const opt = document.createElement('option');
+          opt.value = ver;
+          opt.textContent = ver;
+          if ((selectedTypeRequirements[type] || {}).version === ver) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', () => {
+          if (!selectedTypeRequirements[type]) selectedTypeRequirements[type] = {};
+          selectedTypeRequirements[type].version = sel.value;
+        });
+        reqRow.appendChild(reqLabel);
+        reqRow.appendChild(sel);
+        reqs.appendChild(reqRow);
+      }
+
+      option.appendChild(reqs);
+    }
+
     typeOptionsEl.appendChild(option);
   });
 }
@@ -397,7 +484,10 @@ function renderSuggestedSlot() {
 
       const typeDiv = document.createElement('div');
       typeDiv.className = 'equipment-item-type';
-      typeDiv.textContent = equipment.equipmentType;
+      const typeParts = [equipment.equipmentType];
+      if (equipment.operatingSystem) typeParts.push(equipment.operatingSystem);
+      if (equipment.cimplicityVersion) typeParts.push(`v${equipment.cimplicityVersion}`);
+      typeDiv.textContent = typeParts.join(' · ');
 
       itemDiv.appendChild(nameDiv);
       itemDiv.appendChild(typeDiv);
@@ -485,7 +575,7 @@ function updateActiveEquipment(equipments, suggestedDates = null) {
 apiFetch('/equipment-types')
   .then((res) => res.json())
   .then((data) => {
-    availableTypes = data;
+    availableTypes = Array.isArray(data) ? data : [];
     renderTypeOptions();
     renderSelectedTypeChips();
     updateSuggestButtonState();
@@ -511,6 +601,10 @@ suggestAvailabilityBtn.addEventListener('click', () => {
     types: Array.from(selectedTypes).join(','),
     durationDays: String(durationDays)
   });
+  const requirementsPayload = buildRequirementsPayload();
+  if (Object.keys(requirementsPayload).length > 0) {
+    params.set('requirements', JSON.stringify(requirementsPayload));
+  }
 
   suggestionMessageEl.textContent = 'Checking earliest availability...';
 

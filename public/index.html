@@ -453,22 +453,50 @@
 
       .type-option {
         display: flex;
-        align-items: center;
-        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
         padding: 10px 12px;
         border: 1px solid var(--border-subtle);
         border-radius: 6px;
         background: var(--bg-subtle);
       }
 
-      .type-option input {
-        margin: 0;
+      .type-option-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
 
-      .type-option label {
+      .type-requirements {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .type-requirement {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+      }
+
+      .type-requirement label {
+        min-width: 55px;
+        color: var(--text-muted, #888);
         margin: 0;
-        font-size: 13px;
-        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .type-requirement select {
+        flex: 1;
+        font-size: 12px;
+        padding: 2px 4px;
+        border: 1px solid var(--border-subtle);
+        border-radius: 4px;
+        background: var(--bg);
+        color: var(--text);
       }
 
       .duration-row {
@@ -601,7 +629,7 @@
       .form-and-receipt-container {
         display: flex;
         gap: 20px;
-        align-items: flex-start;
+        align-items: stretch;
       }
 
       .form-and-receipt-container #bookingForm {
@@ -615,10 +643,12 @@
 
       .receipt-card {
         display: none;
+        flex-direction: column;
         padding: 14px 16px;
         border-radius: 6px;
         border: 1px solid var(--border-subtle);
         background: var(--bg-subtle);
+        box-sizing: border-box;
       }
 
       .receipt-card h3 {
@@ -628,10 +658,16 @@
 
       .receipt-text {
         width: 100%;
+        flex: 1;
         min-height: 130px;
         resize: vertical;
         margin-bottom: 10px;
         font-family: Consolas, 'Courier New', monospace;
+        box-sizing: border-box;
+      }
+
+      .receipt-card .secondary-btn {
+        align-self: flex-start;
       }
 
       .secondary-btn {

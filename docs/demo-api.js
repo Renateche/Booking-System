@@ -7,56 +7,72 @@
       name: 'HMI-PC1',
       equipment_type: 'HMI',
       model: 'Industrial PC',
-      ip_address: '192.168.6.1'
+      ip_address: '192.168.6.1',
+      OS: 'Windows 10',
+      cimplicity_version: '9.5'
     },
     {
       id: 2,
       name: 'HMI-PC2',
       equipment_type: 'HMI',
       model: 'Industrial PC',
-      ip_address: '192.168.6.2'
+      ip_address: '192.168.6.2',
+      OS: 'Windows 10',
+      cimplicity_version: '11.0'
     },
     {
       id: 3,
       name: 'RMC-PC1',
       equipment_type: 'RMC',
       model: 'Industrial PC',
-      ip_address: '192.168.6.200'
+      ip_address: '192.168.6.200',
+      OS: 'Windows 10',
+      cimplicity_version: null
     },
     {
       id: 4,
       name: 'RMC-PC2',
       equipment_type: 'RMC',
       model: 'Industrial PC',
-      ip_address: '192.168.6.201'
+      ip_address: '192.168.6.201',
+      OS: 'Windows 11',
+      cimplicity_version: null
     },
     {
       id: 5,
       name: 'DRILLVIEW SERVER 1',
       equipment_type: 'Server',
       model: 'Virtual Machine',
-      ip_address: '192.168.6.20'
+      ip_address: '192.168.6.20',
+      OS: 'Windows Server 2019',
+      cimplicity_version: null
     },
     {
       id: 6,
       name: 'DRILLVIEW SERVER 2',
       equipment_type: 'Server',
       model: 'Virtual Machine',
-      ip_address: '192.168.6.21'
+      ip_address: '192.168.6.21',
+      OS: 'Windows Server 2022',
+      cimplicity_version: null
     },
     {
       id: 7,
       name: '300-PLC01',
       equipment_type: '300PLC',
       model: 'PLC Rack',
-      ip_address: '192.168.6.40'
+      ip_address: '192.168.6.40',
+      OS: null,
+      cimplicity_version: null
     },
     {
       id: 8,
       name: '300-PLC02',
       equipment_type: '300PLC',
       model: 'PLC Rack',
-      ip_address: '192.168.6.41'
+      ip_address: '192.168.6.41',
+      OS: null,
+      cimplicity_version: null
     }
   ];
 
@@ -212,7 +228,8 @@
     });
   }
 
-  function findSuggestedPackage(selectedTypes, durationDays) {
+  function findSuggestedPackage(selectedTypes, durationDays, requirementsByType) {
+    requirementsByType = requirementsByType || {};
     const today = startOfDay(new Date());
     const sortedTypes = [...selectedTypes].sort((left, right) => left.localeCompare(right));
     const equipmentByType = new Map();
@@ -222,6 +239,12 @@
     demoEquipment.forEach((equipment) => {
       if (!sortedTypes.includes(equipment.equipment_type)) {
         return;
+      }
+
+      const typeReqs = requirementsByType[equipment.equipment_type];
+      if (typeReqs) {
+        if (typeReqs.os && equipment.OS !== typeReqs.os) return;
+        if (typeReqs.version && equipment.cimplicity_version !== typeReqs.version) return;
       }
 
       const existing = equipmentByType.get(equipment.equipment_type) || [];
@@ -277,7 +300,9 @@
             equipmentName: equipment.name,
             equipmentType: equipment.equipment_type,
             equipmentModel: equipment.model,
-            ipAddress: equipment.ip_address
+            ipAddress: equipment.ip_address,
+            operatingSystem: equipment.OS || null,
+            cimplicityVersion: equipment.cimplicity_version || null
           }))
         };
       }
@@ -416,11 +441,15 @@
     }
 
     if (url.pathname === '/equipment-types' && method === 'GET') {
+      const types = [...new Set(demoEquipment.map((e) => e.equipment_type))].sort((l, r) => l.localeCompare(r));
       return {
         status: 200,
-        body: [...new Set(demoEquipment.map((equipment) => equipment.equipment_type))].sort(
-          (left, right) => left.localeCompare(right)
-        )
+        body: types.map((type) => {
+          const items = demoEquipment.filter((e) => e.equipment_type === type);
+          const osOptions = [...new Set(items.map((e) => e.OS).filter(Boolean))].sort();
+          const versionOptions = [...new Set(items.map((e) => e.cimplicity_version).filter(Boolean))].sort();
+          return { type, osOptions, versionOptions };
+        })
       };
     }
 
@@ -443,9 +472,13 @@
         throw error;
       }
 
+      const requirements = (() => {
+        try { return JSON.parse(url.searchParams.get('requirements') || '{}'); } catch (_) { return {}; }
+      })();
+
       return {
         status: 200,
-        body: findSuggestedPackage(selectedTypes, durationDays)
+        body: findSuggestedPackage(selectedTypes, durationDays, requirements)
       };
     }
 
