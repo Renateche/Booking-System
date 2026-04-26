@@ -9,7 +9,7 @@
       model: 'Industrial PC',
       ip_address: '192.168.6.1',
       OS: 'Windows 10',
-      cimplicity_version: '9.5'
+      cimplicity_version: 'Cimplicity 8.2'
     },
     {
       id: 2,
@@ -18,7 +18,7 @@
       model: 'Industrial PC',
       ip_address: '192.168.6.2',
       OS: 'Windows 10',
-      cimplicity_version: '11.0'
+      cimplicity_version: 'Cimplicity 2023'
     },
     {
       id: 3,
@@ -44,7 +44,7 @@
       equipment_type: 'Server',
       model: 'Virtual Machine',
       ip_address: '192.168.6.20',
-      OS: 'Windows Server 2019',
+      OS: null,
       cimplicity_version: null
     },
     {
@@ -53,7 +53,7 @@
       equipment_type: 'Server',
       model: 'Virtual Machine',
       ip_address: '192.168.6.21',
-      OS: 'Windows Server 2022',
+      OS: null,
       cimplicity_version: null
     },
     {
@@ -71,6 +71,24 @@
       equipment_type: '300PLC',
       model: 'PLC Rack',
       ip_address: '192.168.6.41',
+      OS: null,
+      cimplicity_version: null
+    },
+    {
+      id: 9,
+      name: '400-PLC01',
+      equipment_type: '400PLC',
+      model: 'PLC Rack',
+      ip_address: '192.168.6.42',
+      OS: null,
+      cimplicity_version: null
+    },
+    {
+      id: 10,
+      name: '400-PLC02',
+      equipment_type: '400PLC',
+      model: 'PLC Rack',
+      ip_address: '192.168.6.43',
       OS: null,
       cimplicity_version: null
     }
