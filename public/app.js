@@ -387,8 +387,8 @@ function renderTypeOptions() {
 
   availableTypes.forEach((entry) => {
     const type = typeof entry === 'string' ? entry : entry.type;
-    const osOptions = typeof entry === 'string' ? [] : (entry.osOptions || []);
-    const versionOptions = typeof entry === 'string' ? [] : (entry.versionOptions || []);
+    const osOptions = typeof entry === 'string' ? [] : entry.osOptions || [];
+    const versionOptions = typeof entry === 'string' ? [] : entry.versionOptions || [];
     const option = document.createElement('div');
     option.className = 'type-option';
 
