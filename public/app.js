@@ -44,7 +44,6 @@ const suggestedEquipmentTypeEl = document.getElementById('suggestedEquipmentType
 const suggestedDateRangeEl = document.getElementById('suggestedDateRange');
 const suggestedDurationEl = document.getElementById('suggestedDuration');
 const suggestedEquipmentSelectorsEl = document.getElementById('suggestedEquipmentSelectors');
-const useSuggestedSlotBtn = document.getElementById('useSuggestedSlotBtn');
 const demoBadge = document.getElementById('demoBadge');
 const pageSubtitle = document.getElementById('pageSubtitle');
 const nextStepBanner = document.getElementById('nextStepBanner');
@@ -810,15 +809,6 @@ suggestAvailabilityBtn.addEventListener('click', () => {
     });
 });
 
-useSuggestedSlotBtn.addEventListener('click', () => {
-  if (!suggestedSlot) return;
-
-  updateActiveEquipment(suggestedSlot.equipments, {
-    startDate: suggestedSlot.startDate,
-    endDate: suggestedSlot.endDate
-  });
-});
-
 copyReceiptBtn.addEventListener('click', async () => {
   if (!bookingReceiptTextEl.value) return;
 
@@ -1003,6 +993,10 @@ function renderSingleMonth(baseDate, bookedDateMap) {
   const startWeekday = (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+  // Get today's date for past date comparison
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
   for (let i = 0; i < startWeekday; i++) {
     const empty = document.createElement('div');
     empty.className = 'calendar-day outside';
@@ -1017,6 +1011,7 @@ function renderSingleMonth(baseDate, bookedDateMap) {
     cell.textContent = day;
 
     const bookedByList = bookedDateMap[dateStr];
+    const isPastDate = dateStr < todayStr;
 
     if (bookedByList) {
       cell.classList.add('booked');
@@ -1031,6 +1026,10 @@ function renderSingleMonth(baseDate, bookedDateMap) {
       cell.appendChild(nameEl);
     } else {
       cell.addEventListener('click', () => onCalendarDateClick(dateStr));
+    }
+
+    if (isPastDate) {
+      cell.classList.add('past');
     }
 
     if (selectedStartDate === dateStr || selectedEndDate === dateStr) {
@@ -1287,7 +1286,7 @@ function displayBookingsByName(name) {
 }
 
 toggleSearchBtn?.addEventListener('click', () => {
-  const isHidden = searchContent.style.display === 'none';
+  const isHidden = getComputedStyle(searchContent).display === 'none';
   searchContent.style.display = isHidden ? 'block' : 'none';
   toggleSearchBtn.textContent = isHidden ? '−' : '+';
 });

@@ -238,7 +238,7 @@
       .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 4px;
+        gap: 6px;
       }
 
       .calendar-header {
@@ -249,7 +249,7 @@
 
       /* Day cell – Azure DevOps sprint style */
       .calendar-day {
-        height: 42px;
+        min-height: 48px;
         border-radius: 4px;
         border: 1px solid var(--border-subtle);
         font-size: 11px;
@@ -264,6 +264,17 @@
       .calendar-day.outside {
         background: var(--bg-subtle);
         color: var(--text-disabled);
+      }
+
+      .calendar-day.past {
+        opacity: 0.5;
+        color: var(--text-disabled);
+        text-decoration: line-through;
+      }
+
+      .calendar-day.past:hover:not(.booked) {
+        background: var(--bg-hover);
+        cursor: pointer;
       }
 
       .calendar-day.booked {
@@ -757,9 +768,13 @@
 
       /* Large screen optimizations */
       .page-content {
-        max-width: min(96%, 1600px);
+        max-width: min(95%, 1480px);
         margin: 0 auto;
         padding: 24px;
+      }
+
+      #searchContent {
+        display: none;
       }
 
       .step1-layout {
@@ -768,36 +783,70 @@
         gap: 16px;
       }
 
-      @media (min-width: 1000px) {
+      .step1-type-row {
+        width: 100%;
+      }
+
+      .step1-suggestion-row {
+        width: 100%;
+      }
+
+      .step1-suggestion-row .suggestion-card {
+        margin-top: 0;
+      }
+
+      @media (min-width: 1150px) {
         .step1-layout {
           display: grid;
-          grid-template-columns: 320px 1fr;
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-areas:
+            'type'
+            'calendar'
+            'suggestion';
           gap: 24px;
           align-items: start;
         }
 
-        .step1-left {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
+        .step1-type-row {
+          grid-area: type;
+        }
+
+        .step1-type-row .type-options {
+          grid-template-columns: repeat(4, minmax(180px, 1fr));
         }
 
         .step1-calendar {
+          grid-area: calendar;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           min-width: 0;
+          gap: 16px;
+        }
+
+        .step1-suggestion-row {
+          grid-area: suggestion;
+        }
+
+        #step1CalendarSection {
+          width: min(100%, 1200px);
         }
 
         #step1CalendarWrapper {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: repeat(2, minmax(420px, 1fr));
+          gap: 18px;
+          align-items: start;
         }
 
-        #suggestedSlotCard {
-          margin-top: 0;
+        #step1CalendarWrapper .calendar-month {
+          margin-bottom: 0;
         }
       }
 
       @media (min-width: 1400px) {
-        .step1-layout {
-          grid-template-columns: 380px 1fr;
+        .calendar-day {
+          min-height: 56px;
+          font-size: 12px;
         }
       }
     </style>
@@ -834,43 +883,9 @@
         </div>
 
         <div class="step1-layout">
-          <div class="step1-left">
+          <div class="step1-type-row">
             <div id="selectedTypeChips" class="selected-chips" aria-live="polite"></div>
             <div id="typeOptions" class="type-options"></div>
-
-            <div class="step-actions">
-              <button id="suggestAvailabilityBtn" class="primary-btn" type="button" disabled>
-                Suggest availability
-              </button>
-              <div id="suggestionMessage" class="step-hint">
-                Choose at least one type and select dates using the calendar.
-              </div>
-            </div>
-
-            <div id="suggestedSlotCard" class="suggestion-card">
-              <h3>Suggested slot</h3>
-
-              <div class="suggestion-equipment-list">
-                <div class="suggestion-label">Choose equipment</div>
-                <div id="suggestedEquipmentSelectors" class="suggestion-selectors"></div>
-              </div>
-
-              <div class="suggestion-grid">
-                <div>
-                  <div class="suggestion-label">Suggested dates</div>
-                  <div id="suggestedDateRange" class="suggestion-value"></div>
-                </div>
-
-                <div>
-                  <div class="suggestion-label">Duration</div>
-                  <div id="suggestedDuration" class="suggestion-value"></div>
-                </div>
-              </div>
-
-              <button id="useSuggestedSlotBtn" class="primary-btn" type="button">
-                Use this slot
-              </button>
-            </div>
           </div>
 
           <!-- Calendar column -->
@@ -900,6 +915,38 @@
                 <!-- calendars injected here -->
               </div>
             </div>
+
+            <div class="step-actions">
+              <button id="suggestAvailabilityBtn" class="primary-btn" type="button" disabled>
+                Suggest availability
+              </button>
+              <div id="suggestionMessage" class="step-hint">
+                Choose at least one type and select dates using the calendar.
+              </div>
+            </div>
+          </div>
+
+          <div class="step1-suggestion-row">
+            <div id="suggestedSlotCard" class="suggestion-card">
+              <h3>Suggested slot</h3>
+
+              <div class="suggestion-equipment-list">
+                <div class="suggestion-label">Choose equipment</div>
+                <div id="suggestedEquipmentSelectors" class="suggestion-selectors"></div>
+              </div>
+
+              <div class="suggestion-grid">
+                <div>
+                  <div class="suggestion-label">Suggested dates</div>
+                  <div id="suggestedDateRange" class="suggestion-value"></div>
+                </div>
+
+                <div>
+                  <div class="suggestion-label">Duration</div>
+                  <div id="suggestedDuration" class="suggestion-value"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -924,18 +971,18 @@
             <input type="hidden" id="note" />
 
             <div style="margin-bottom: 14px">
-              <label for="projectNumber">Project Number *</label>
-              <input type="text" id="projectNumber" required />
+              <label for="projectNumber">Project Number </label>
+              <input type="text" id="projectNumber" placeholder="470001234" required />
             </div>
 
             <div style="margin-bottom: 14px">
-              <label for="projectName">Project Name *</label>
-              <input type="text" id="projectName" required />
+              <label for="projectName">Project Name </label>
+              <input type="text" id="projectName" placeholder="Rig + Project Name" required />
             </div>
 
             <div style="margin-bottom: 14px">
               <label for="bookedBy">Your name</label>
-              <input type="text" id="bookedBy" required />
+              <input type="text" id="bookedBy" placeholder="Piper Handler" required />
             </div>
 
             <button type="submit" class="primary-btn">Book equipment</button>
@@ -1006,8 +1053,8 @@
           "
         >
           <h2>4. Search equipment bookings</h2>
-          <button id="toggleSearchBtn" class="secondary-btn" type="button" title="Show/hide search">
-            −
+          <button id="toggleSearchBtn" class="primary-btn" type="button" title="Show/hide search">
+            +
           </button>
         </div>
 
