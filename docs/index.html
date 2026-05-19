@@ -34,15 +34,15 @@
         --text-disabled: #a19f9d;
 
         /* Brand */
-        --accent: #0078d4;
-        --accent-hover: #106ebe;
+        --accent: #0092bc;
+        --accent-hover: #006b8f;
 
         /* Status */
-        --danger: #d13438;
+        --danger: #e3303d;
 
         /* Calendar */
-        --calendar-booked-bg: rgba(209, 52, 56, 0.15);
-        --calendar-booked-text: #a4262c;
+        --calendar-booked-bg: rgba(227, 48, 61, 0.15);
+        --calendar-booked-text: #c12129;
 
         --calendar-selected-bg: rgba(0, 120, 212, 0.25);
         --calendar-range-bg: rgba(0, 120, 212, 0.12);
@@ -50,24 +50,24 @@
 
       /* ===== Dark mode ===== */
       body.dark {
-        --bg-page: #1e1e1e;
-        --bg-panel: #252526;
-        --bg-subtle: #2d2d30;
-        --bg-hover: #2f3238;
+        --bg-page: #1a1a1a;
+        --bg-panel: #2a2a2a;
+        --bg-subtle: #333333;
+        --bg-hover: #3d3d3d;
 
-        --border-subtle: #3f3f46;
+        --border-subtle: #4a4a4a;
 
         --text-primary: #ffffff;
-        --text-secondary: #c8c8c8;
-        --text-disabled: #8a8a8a;
+        --text-secondary: #d0d0d0;
+        --text-disabled: #909090;
 
-        --accent: #2899f5;
-        --accent-hover: #3aa0f3;
+        --accent: #0092bc;
+        --accent-hover: #006b8f;
 
-        --danger: #f1707b;
+        --danger: #e3303d;
 
-        --calendar-booked-bg: rgba(241, 112, 123, 0.35);
-        --calendar-booked-text: #ffd2d6;
+        --calendar-booked-bg: rgba(227, 48, 61, 0.35);
+        --calendar-booked-text: #ffb3b8;
 
         --calendar-selected-bg: rgba(40, 153, 245, 0.35);
         --calendar-range-bg: rgba(40, 153, 245, 0.2);
@@ -143,6 +143,12 @@
         color: var(--text-primary);
       }
 
+      input[type='number'] {
+        width: 50px;
+        padding: 4px 6px;
+        font-size: 12px;
+      }
+
       input:focus,
       select:focus {
         outline: none;
@@ -216,7 +222,7 @@
 
       /* ======================Calendar Layout=========================== */
 
-      #calendarWrapper {
+      #step1CalendarWrapper {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 20px;
@@ -570,6 +576,25 @@
         margin-top: 8px;
       }
 
+      .suggestion-selectors {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .suggestion-selector {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .suggestion-selector label {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
       .equipment-item {
         display: flex;
         align-items: center;
@@ -701,7 +726,7 @@
       }
 
       @media (max-width: 900px) {
-        #calendarWrapper {
+        #step1CalendarWrapper {
           grid-template-columns: 1fr;
         }
       }
@@ -732,7 +757,7 @@
 
       /* Large screen optimizations */
       .page-content {
-        max-width: 1100px;
+        max-width: min(96%, 1600px);
         margin: 0 auto;
         padding: 24px;
       }
@@ -743,10 +768,10 @@
         gap: 16px;
       }
 
-      @media (min-width: 1280px) {
+      @media (min-width: 1000px) {
         .step1-layout {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 320px 1fr;
           gap: 24px;
           align-items: start;
         }
@@ -754,14 +779,25 @@
         .step1-left {
           display: flex;
           flex-direction: column;
+          gap: 16px;
         }
 
-        .type-options {
-          grid-template-columns: repeat(6, 1fr);
+        .step1-calendar {
+          min-width: 0;
+        }
+
+        #step1CalendarWrapper {
+          grid-template-columns: 1fr 1fr;
         }
 
         #suggestedSlotCard {
           margin-top: 0;
+        }
+      }
+
+      @media (min-width: 1400px) {
+        .step1-layout {
+          grid-template-columns: 380px 1fr;
         }
       }
     </style>
@@ -783,8 +819,8 @@
       <section class="step-card">
         <h2>1. Choose equipment type</h2>
         <p class="step-copy">
-          Choose one or more types and how long you need the equipment for. The app will suggest the
-          earliest matching slot.
+          Choose one or more types and the date range you need the equipment for. The app will
+          suggest the earliest matching slot.
         </p>
 
         <div class="flow-guide" aria-label="Booking flow overview">
@@ -802,46 +838,68 @@
             <div id="selectedTypeChips" class="selected-chips" aria-live="polite"></div>
             <div id="typeOptions" class="type-options"></div>
 
-            <div class="duration-row">
-              <div>
-                <label for="bookingDurationDays">Booking length (days)</label>
-                <input id="bookingDurationDays" type="number" min="1" step="1" value="1" />
-              </div>
-            </div>
-
             <div class="step-actions">
               <button id="suggestAvailabilityBtn" class="primary-btn" type="button" disabled>
                 Suggest availability
               </button>
               <div id="suggestionMessage" class="step-hint">
-                Choose at least one type to request a suggested slot.
+                Choose at least one type and select dates using the calendar.
               </div>
+            </div>
+
+            <div id="suggestedSlotCard" class="suggestion-card">
+              <h3>Suggested slot</h3>
+
+              <div class="suggestion-equipment-list">
+                <div class="suggestion-label">Choose equipment</div>
+                <div id="suggestedEquipmentSelectors" class="suggestion-selectors"></div>
+              </div>
+
+              <div class="suggestion-grid">
+                <div>
+                  <div class="suggestion-label">Suggested dates</div>
+                  <div id="suggestedDateRange" class="suggestion-value"></div>
+                </div>
+
+                <div>
+                  <div class="suggestion-label">Duration</div>
+                  <div id="suggestedDuration" class="suggestion-value"></div>
+                </div>
+              </div>
+
+              <button id="useSuggestedSlotBtn" class="primary-btn" type="button">
+                Use this slot
+              </button>
             </div>
           </div>
 
-          <div id="suggestedSlotCard" class="suggestion-card">
-            <h3>Suggested slot</h3>
+          <!-- Calendar column -->
+          <div class="step1-calendar">
+            <div id="step1CalendarSection">
+              <h3 style="margin: 0 0 12px 0; font-size: 14px">Select dates</h3>
 
-            <div class="suggestion-equipment-list">
-              <div class="suggestion-label">Equipment to book</div>
-              <div id="suggestedEquipmentList" class="equipment-items"></div>
-            </div>
-
-            <div class="suggestion-grid">
-              <div>
-                <div class="suggestion-label">Suggested dates</div>
-                <div id="suggestedDateRange" class="suggestion-value"></div>
+              <div class="calendar-instructions">
+                <strong>How to select dates:</strong> Click an available date to set your start
+                date, then click again to set your end date. Click a third time to clear.
               </div>
 
-              <div>
-                <div class="suggestion-label">Duration</div>
-                <div id="suggestedDuration" class="suggestion-value"></div>
+              <div class="calendar-controls">
+                <button id="step1PrevMonthBtn">◀</button>
+                <button id="step1NextMonthBtn">▶</button>
+                <button id="step1ClearDatesBtn" type="button" style="display: none">
+                  Clear dates
+                </button>
+                <div
+                  id="step1CalendarSelectionState"
+                  class="calendar-selection-state"
+                  style="display: none; margin-left: auto"
+                ></div>
+              </div>
+
+              <div id="step1CalendarWrapper">
+                <!-- calendars injected here -->
               </div>
             </div>
-
-            <button id="useSuggestedSlotBtn" class="primary-btn" type="button">
-              Use this slot
-            </button>
           </div>
         </div>
       </section>
@@ -851,59 +909,34 @@
         <div id="nextStepCopy" class="next-step-copy"></div>
       </div>
 
-      <!-- CALENDAR -->
-      <div id="calendarSection" style="display: none; margin-top: 1rem">
-        <h3>2. Review available dates</h3>
-
-        <div class="calendar-instructions">
-          <strong>How to select dates:</strong> Click an available date to set your start date, then
-          click again to set your end date. The calendar shows booked dates in red (unavailable).
-          Click a third time to clear your selection.
-        </div>
-
-        <div class="calendar-controls">
-          <button id="prevMonthBtn">◀</button>
-          <button id="nextMonthBtn">▶</button>
-          <button id="clearDatesBtn" type="button" style="display: none">Clear dates</button>
-          <div
-            id="calendarSelectionState"
-            class="calendar-selection-state"
-            style="display: none; margin-left: auto"
-          ></div>
-        </div>
-
-        <div id="calendarWrapper">
-          <!-- calendars injected here -->
-        </div>
-      </div>
-
       <!-- Step 2 -->
       <section id="bookingSection" class="disabled">
         <h2>2. Book this equipment</h2>
         <p id="bookingSectionHint" class="step-copy">
-          Complete Step 1 first. When a suggestion is ready, review the dates below and then confirm
-          this booking here.
+          Complete Step 1 first to confirm your booking.
         </p>
 
         <div class="form-and-receipt-container">
           <form id="bookingForm">
-            <div class="form-row">
-              <div>
-                <label for="startDate">Start date</label>
-                <input type="date" id="startDate" required />
-              </div>
+            <!-- Hidden inputs to store dates and name from Step 1 -->
+            <input type="hidden" id="startDate" />
+            <input type="hidden" id="endDate" />
+            <input type="hidden" id="note" />
 
-              <div>
-                <label for="endDate">End date</label>
-                <input type="date" id="endDate" required />
-              </div>
+            <div style="margin-bottom: 14px">
+              <label for="projectNumber">Project Number *</label>
+              <input type="text" id="projectNumber" required />
             </div>
 
-            <label for="bookedBy">Your name</label>
-            <input type="text" id="bookedBy" required />
+            <div style="margin-bottom: 14px">
+              <label for="projectName">Project Name *</label>
+              <input type="text" id="projectName" required />
+            </div>
 
-            <label for="note">Optional note</label>
-            <input type="text" id="note" />
+            <div style="margin-bottom: 14px">
+              <label for="bookedBy">Your name</label>
+              <input type="text" id="bookedBy" required />
+            </div>
 
             <button type="submit" class="primary-btn">Book equipment</button>
 
@@ -946,11 +979,12 @@
       <table id="bookingsTable">
         <thead>
           <tr>
+            <th>Project Number</th>
+            <th>Project Name</th>
             <th>Equipment</th>
             <th>Start</th>
             <th>End</th>
             <th>Booked by</th>
-            <th>Note</th>
             <th></th>
           </tr>
         </thead>
@@ -979,20 +1013,27 @@
 
         <div id="searchContent">
           <div style="margin-bottom: 14px">
-            <label for="equipmentSearch">Select equipment</label>
+            <label for="equipmentSearch">Search by equipment</label>
             <select id="equipmentSearch">
               <option value="">-- Choose equipment --</option>
             </select>
           </div>
 
+          <div style="margin-bottom: 14px">
+            <label for="nameSearch">Or search by name, project number or project name</label>
+            <input type="text" id="nameSearch" placeholder="Name, project number or project name" />
+          </div>
+
           <table id="equipmentBookingsTable" style="display: none">
             <thead>
               <tr>
+                <th>Project Number</th>
+                <th>Project Name</th>
                 <th>Equipment</th>
                 <th>Start</th>
                 <th>End</th>
                 <th>Booked by</th>
-                <th>Note</th>
+                <th></th>
               </tr>
             </thead>
             <tbody></tbody>

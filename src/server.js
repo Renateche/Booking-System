@@ -79,6 +79,26 @@ function parseBookingDate(value) {
   return new Date(year, month - 1, day);
 }
 
+function parseDateOnly(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
 function isEquipmentAvailable(bookings, candidateStart, durationDays) {
   const candidateEnd = addDays(candidateStart, durationDays);
 
@@ -89,10 +109,26 @@ function isEquipmentAvailable(bookings, candidateStart, durationDays) {
   });
 }
 
-function findSuggestedPackage(equipmentByType, bookingsByEquipmentId, durationDays, searchStart) {
+function findSuggestedPackage(
+  equipmentByType,
+  bookingsByEquipmentId,
+  durationDays,
+  searchStart,
+  requestedQuantitiesByType = {}
+) {
   const selectedTypes = Array.from(equipmentByType.keys()).sort((left, right) =>
     left.localeCompare(right)
   );
+
+  const mapEquipment = (equipment) => ({
+    equipmentId: equipment.id,
+    equipmentName: equipment.name,
+    equipmentType: equipment.equipment_type,
+    equipmentModel: equipment.model,
+    ipAddress: equipment.ip_address,
+    operatingSystem: equipment.OS || null,
+    cimplicityVersion: equipment.cimplicity_version || null
+  });
 
   for (let offset = 0; offset < 365; offset++) {
     const candidateStart = addDays(searchStart, offset);
@@ -100,39 +136,44 @@ function findSuggestedPackage(equipmentByType, bookingsByEquipmentId, durationDa
     let allTypesMatched = true;
 
     for (const type of selectedTypes) {
-      const availableEquipment = equipmentByType
-        .get(type)
-        .find((equipment) =>
-          isEquipmentAvailable(
-            bookingsByEquipmentId.get(equipment.id) || [],
-            candidateStart,
-            durationDays
-          )
-        );
+      const requestedQuantity = Math.max(
+        1,
+        Number.parseInt(requestedQuantitiesByType[type], 10) || 1
+      );
+      const availableEquipment = (equipmentByType.get(type) || []).filter((equipment) =>
+        isEquipmentAvailable(bookingsByEquipmentId.get(equipment.id) || [], candidateStart, durationDays)
+      );
 
-      if (!availableEquipment) {
+      if (availableEquipment.length < requestedQuantity) {
         allTypesMatched = false;
         break;
       }
 
-      chosenEquipment.push(availableEquipment);
+      chosenEquipment.push(...availableEquipment.slice(0, requestedQuantity));
     }
 
     if (allTypesMatched) {
+      const availableOptionsByType = {};
+
+      for (const type of selectedTypes) {
+        const options = (equipmentByType.get(type) || []).map(mapEquipment);
+
+        availableOptionsByType[type] = options;
+      }
+
       return {
         requestedTypes: selectedTypes,
+        requestedQuantities: Object.fromEntries(
+          selectedTypes.map((type) => [
+            type,
+            Math.max(1, Number.parseInt(requestedQuantitiesByType[type], 10) || 1)
+          ])
+        ),
         durationDays,
         startDate: formatDate(candidateStart),
         endDate: formatDate(addDays(candidateStart, durationDays - 1)),
-        equipments: chosenEquipment.map((equipment) => ({
-          equipmentId: equipment.id,
-          equipmentName: equipment.name,
-          equipmentType: equipment.equipment_type,
-          equipmentModel: equipment.model,
-          ipAddress: equipment.ip_address,
-          operatingSystem: equipment.OS || null,
-          cimplicityVersion: equipment.cimplicity_version || null
-        }))
+        equipments: chosenEquipment.map(mapEquipment),
+        availableOptionsByType
       };
     }
   }
@@ -385,7 +426,12 @@ app.get('/availability-suggestion', async (req, res) => {
     .split(',')
     .map((type) => type.trim())
     .filter(Boolean);
-  const durationDays = Number.parseInt(req.query.durationDays, 10);
+  const requestedStartDate = String(req.query.startDate || '').trim();
+  const requestedEndDate = String(req.query.endDate || '').trim();
+  const requestedDurationDays = Number.parseInt(req.query.durationDays, 10);
+
+  let durationDays = null;
+  let searchStart = startOfDay(new Date());
 
   let requirementsByType = {};
   try {
@@ -402,9 +448,36 @@ app.get('/availability-suggestion', async (req, res) => {
     });
   }
 
-  if (!Number.isInteger(durationDays) || durationDays < 1) {
+  if (requestedStartDate || requestedEndDate) {
+    if (!requestedStartDate || !requestedEndDate) {
+      return res.status(400).json({
+        error: 'Both startDate and endDate are required when using a preferred date range'
+      });
+    }
+
+    const parsedStartDate = parseDateOnly(requestedStartDate);
+    const parsedEndDate = parseDateOnly(requestedEndDate);
+
+    if (!parsedStartDate || !parsedEndDate) {
+      return res.status(400).json({
+        error: 'startDate and endDate must be valid dates in YYYY-MM-DD format'
+      });
+    }
+
+    if (parsedEndDate < parsedStartDate) {
+      return res.status(400).json({
+        error: 'endDate must be on or after startDate'
+      });
+    }
+
+    const msPerDay = 24 * 60 * 60 * 1000;
+    durationDays = Math.floor((parsedEndDate - parsedStartDate) / msPerDay) + 1;
+    searchStart = startOfDay(parsedStartDate);
+  } else if (Number.isInteger(requestedDurationDays) && requestedDurationDays > 0) {
+    durationDays = requestedDurationDays;
+  } else {
     return res.status(400).json({
-      error: 'durationDays must be an integer greater than 0'
+      error: 'Provide either durationDays (> 0) or both startDate and endDate'
     });
   }
 
@@ -456,6 +529,23 @@ app.get('/availability-suggestion', async (req, res) => {
       });
     }
 
+    const requestedQuantitiesByType = Object.fromEntries(
+      selectedTypes.map((type) => {
+        const quantity = Number.parseInt(requirementsByType[type]?.quantity, 10);
+        return [type, Number.isInteger(quantity) && quantity > 0 ? quantity : 1];
+      })
+    );
+
+    const underProvisionedTypes = selectedTypes.filter(
+      (type) => (equipmentByType.get(type) || []).length < requestedQuantitiesByType[type]
+    );
+
+    if (underProvisionedTypes.length > 0) {
+      return res.status(404).json({
+        error: `Not enough equipment available for type(s): ${underProvisionedTypes.join(', ')}`
+      });
+    }
+
     const equipmentIds = matchingEquipment.map((equipment) => equipment.id);
     const bookingPlaceholders = equipmentIds.map(() => '?').join(', ');
     const bookings = await allAsync(
@@ -476,12 +566,12 @@ app.get('/availability-suggestion', async (req, res) => {
       bookingsByEquipmentId.set(booking.equipment_id, existing);
     });
 
-    const today = startOfDay(new Date());
     const suggestion = findSuggestedPackage(
       equipmentByType,
       bookingsByEquipmentId,
       durationDays,
-      today
+      searchStart,
+      requestedQuantitiesByType
     );
 
     if (!suggestion) {
@@ -509,33 +599,54 @@ app.get('/bookings', (req, res) => {
     .map((value) => Number.parseInt(value.trim(), 10))
     .filter((value) => Number.isInteger(value));
 
-  // Validate query parameter
+  let sql;
+  let params;
+
   if (equipmentIds.length === 0) {
-    return res.status(400).json({
-      error: 'Missing required query parameter: equipmentId or equipmentIds'
-    });
+    // If no equipment IDs provided, return all bookings
+    sql = `
+      SELECT
+        bookings.id,
+        bookings.equipment_id,
+        bookings.start_datetime,
+        bookings.end_datetime,
+        bookings.booked_by,
+        bookings.note,
+        bookings.created_at,
+        bookings.project_number,
+        bookings.project_name,
+        cpc_equipment.name AS equipment_name,
+        cpc_equipment.equipment_type AS equipment_type
+      FROM bookings
+      JOIN cpc_equipment ON cpc_equipment.id = bookings.equipment_id
+      ORDER BY bookings.start_datetime, cpc_equipment.name
+    `;
+    params = [];
+  } else {
+    // If equipment IDs provided, filter by them
+    const placeholders = equipmentIds.map(() => '?').join(', ');
+    sql = `
+      SELECT
+        bookings.id,
+        bookings.equipment_id,
+        bookings.start_datetime,
+        bookings.end_datetime,
+        bookings.booked_by,
+        bookings.note,
+        bookings.created_at,
+        bookings.project_number,
+        bookings.project_name,
+        cpc_equipment.name AS equipment_name,
+        cpc_equipment.equipment_type AS equipment_type
+      FROM bookings
+      JOIN cpc_equipment ON cpc_equipment.id = bookings.equipment_id
+      WHERE bookings.equipment_id IN (${placeholders})
+      ORDER BY bookings.start_datetime, cpc_equipment.name
+    `;
+    params = equipmentIds;
   }
 
-  const placeholders = equipmentIds.map(() => '?').join(', ');
-
-  const sql = `
-    SELECT
-      bookings.id,
-      bookings.equipment_id,
-      bookings.start_datetime,
-      bookings.end_datetime,
-      bookings.booked_by,
-      bookings.note,
-      bookings.created_at,
-      cpc_equipment.name AS equipment_name,
-      cpc_equipment.equipment_type AS equipment_type
-    FROM bookings
-    JOIN cpc_equipment ON cpc_equipment.id = bookings.equipment_id
-    WHERE bookings.equipment_id IN (${placeholders})
-    ORDER BY bookings.start_datetime, cpc_equipment.name
-  `;
-
-  db.all(sql, equipmentIds, (err, rows) => {
+  db.all(sql, params, (err, rows) => {
     if (err) {
       console.error('Failed to fetch bookings:', err.message);
       return res.status(500).json({
@@ -549,7 +660,7 @@ app.get('/bookings', (req, res) => {
 
 // ---------- API: POST /bookings ----------
 app.post('/bookings', async (req, res) => {
-  const { equipment_id, equipment_ids, start_datetime, end_datetime, booked_by, note } = req.body;
+  const { equipment_id, equipment_ids, start_datetime, end_datetime, booked_by, note, project_number, project_name } = req.body;
   const normalizedEquipmentIds = Array.isArray(equipment_ids)
     ? equipment_ids
         .map((value) => Number.parseInt(value, 10))
@@ -571,8 +682,10 @@ app.post('/bookings', async (req, res) => {
       start_datetime,
       end_datetime,
       booked_by,
-      note
-    ) VALUES (?, ?, ?, ?, ?)
+      note,
+      project_number,
+      project_name
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
   try {
@@ -581,7 +694,7 @@ app.post('/bookings', async (req, res) => {
     const bookingIds = [];
 
     for (const equipmentIdValue of normalizedEquipmentIds) {
-      const params = [equipmentIdValue, start_datetime, end_datetime, booked_by, note || null];
+      const params = [equipmentIdValue, start_datetime, end_datetime, booked_by, note || null, project_number || null, project_name || null];
       const result = await runAsync(sql, params);
       bookingIds.push(result.lastID);
     }

@@ -116,6 +116,26 @@
     return new Date(year, month - 1, day);
   }
 
+  function parseDateOnly(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return null;
+    }
+
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    if (
+      Number.isNaN(date.getTime()) ||
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
+      return null;
+    }
+
+    return date;
+  }
+
   function toDateTimeString(date) {
     return `${formatDate(date)} 00:00`;
   }
@@ -246,10 +266,19 @@
     });
   }
 
-  function findSuggestedPackage(selectedTypes, durationDays, requirementsByType) {
+  function findSuggestedPackage(selectedTypes, durationDays, requirementsByType, searchStartDate) {
     requirementsByType = requirementsByType || {};
-    const today = startOfDay(new Date());
+    const searchStart = startOfDay(searchStartDate || new Date());
     const sortedTypes = [...selectedTypes].sort((left, right) => left.localeCompare(right));
+    const mapEquipment = (equipment) => ({
+      equipmentId: equipment.id,
+      equipmentName: equipment.name,
+      equipmentType: equipment.equipment_type,
+      equipmentModel: equipment.model,
+      ipAddress: equipment.ip_address,
+      operatingSystem: equipment.OS || null,
+      cimplicityVersion: equipment.cimplicity_version || null
+    });
     const equipmentByType = new Map();
     const bookings = loadBookings();
     const bookingsByEquipmentId = new Map();
@@ -283,45 +312,67 @@
       throw error;
     }
 
+    const underProvisionedTypes = sortedTypes.filter(
+      (type) =>
+        (equipmentByType.get(type) || []).length <
+        Math.max(1, Number.parseInt(requirementsByType[type]?.quantity, 10) || 1)
+    );
+    if (underProvisionedTypes.length > 0) {
+      const error = new Error(
+        `Not enough equipment available for type(s): ${underProvisionedTypes.join(', ')}`
+      );
+      error.status = 404;
+      throw error;
+    }
+
     for (let offset = 0; offset < 365; offset++) {
-      const candidateStart = addDays(today, offset);
+      const candidateStart = addDays(searchStart, offset);
       const chosenEquipment = [];
       let allTypesMatched = true;
 
       for (const type of sortedTypes) {
-        const availableEquipment = equipmentByType
-          .get(type)
-          .find((equipment) =>
-            isEquipmentAvailable(
-              bookingsByEquipmentId.get(equipment.id) || [],
-              candidateStart,
-              durationDays
-            )
-          );
+        const requestedQuantity = Math.max(
+          1,
+          Number.parseInt(requirementsByType[type]?.quantity, 10) || 1
+        );
+        const availableEquipment = (equipmentByType.get(type) || []).filter((equipment) =>
+          isEquipmentAvailable(
+            bookingsByEquipmentId.get(equipment.id) || [],
+            candidateStart,
+            durationDays
+          )
+        );
 
-        if (!availableEquipment) {
+        if (availableEquipment.length < requestedQuantity) {
           allTypesMatched = false;
           break;
         }
 
-        chosenEquipment.push(availableEquipment);
+        chosenEquipment.push(...availableEquipment.slice(0, requestedQuantity));
       }
 
       if (allTypesMatched) {
+        const availableOptionsByType = {};
+
+        for (const type of sortedTypes) {
+          const options = (equipmentByType.get(type) || []).map(mapEquipment);
+
+          availableOptionsByType[type] = options;
+        }
+
         return {
           requestedTypes: sortedTypes,
+          requestedQuantities: Object.fromEntries(
+            sortedTypes.map((type) => [
+              type,
+              Math.max(1, Number.parseInt(requirementsByType[type]?.quantity, 10) || 1)
+            ])
+          ),
           durationDays,
           startDate: formatDate(candidateStart),
           endDate: formatDate(addDays(candidateStart, durationDays - 1)),
-          equipments: chosenEquipment.map((equipment) => ({
-            equipmentId: equipment.id,
-            equipmentName: equipment.name,
-            equipmentType: equipment.equipment_type,
-            equipmentModel: equipment.model,
-            ipAddress: equipment.ip_address,
-            operatingSystem: equipment.OS || null,
-            cimplicityVersion: equipment.cimplicity_version || null
-          }))
+          equipments: chosenEquipment.map(mapEquipment),
+          availableOptionsByType
         };
       }
     }
@@ -480,7 +531,12 @@
         .split(',')
         .map((type) => type.trim())
         .filter(Boolean);
-      const durationDays = Number.parseInt(url.searchParams.get('durationDays'), 10);
+      const requestedStartDate = String(url.searchParams.get('startDate') || '').trim();
+      const requestedEndDate = String(url.searchParams.get('endDate') || '').trim();
+      const requestedDurationDays = Number.parseInt(url.searchParams.get('durationDays'), 10);
+
+      let durationDays = null;
+      let searchStart = startOfDay(new Date());
 
       if (selectedTypes.length === 0) {
         const error = new Error('Missing required query parameter: types');
@@ -488,8 +544,37 @@
         throw error;
       }
 
-      if (!Number.isInteger(durationDays) || durationDays < 1) {
-        const error = new Error('durationDays must be an integer greater than 0');
+      if (requestedStartDate || requestedEndDate) {
+        if (!requestedStartDate || !requestedEndDate) {
+          const error = new Error(
+            'Both startDate and endDate are required when using a preferred date range'
+          );
+          error.status = 400;
+          throw error;
+        }
+
+        const parsedStartDate = parseDateOnly(requestedStartDate);
+        const parsedEndDate = parseDateOnly(requestedEndDate);
+
+        if (!parsedStartDate || !parsedEndDate) {
+          const error = new Error('startDate and endDate must be valid dates in YYYY-MM-DD format');
+          error.status = 400;
+          throw error;
+        }
+
+        if (parsedEndDate < parsedStartDate) {
+          const error = new Error('endDate must be on or after startDate');
+          error.status = 400;
+          throw error;
+        }
+
+        const msPerDay = 24 * 60 * 60 * 1000;
+        durationDays = Math.floor((parsedEndDate - parsedStartDate) / msPerDay) + 1;
+        searchStart = startOfDay(parsedStartDate);
+      } else if (Number.isInteger(requestedDurationDays) && requestedDurationDays > 0) {
+        durationDays = requestedDurationDays;
+      } else {
+        const error = new Error('Provide either durationDays (> 0) or both startDate and endDate');
         error.status = 400;
         throw error;
       }
@@ -504,7 +589,7 @@
 
       return {
         status: 200,
-        body: findSuggestedPackage(selectedTypes, durationDays, requirements)
+        body: findSuggestedPackage(selectedTypes, durationDays, requirements, searchStart)
       };
     }
 
@@ -517,9 +602,11 @@
         .filter(Number.isInteger);
 
       if (equipmentIds.length === 0) {
-        const error = new Error('Missing required query parameter: equipmentId or equipmentIds');
-        error.status = 400;
-        throw error;
+        // Return all bookings if no equipment IDs specified
+        return {
+          status: 200,
+          body: currentBookings
+        };
       }
 
       return {

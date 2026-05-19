@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS bookings (
 
     booked_by TEXT NOT NULL,                -- Name / short identifier
     note TEXT,
+    project_number TEXT,
+    project_name TEXT,
 
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
 

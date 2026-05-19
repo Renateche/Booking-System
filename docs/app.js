@@ -8,6 +8,8 @@ const noBookings = document.getElementById('noBookings');
 
 const startInput = document.getElementById('startDate');
 const endInput = document.getElementById('endDate');
+const projectNumberInput = document.getElementById('projectNumber');
+const projectNameInput = document.getElementById('projectName');
 const bookedByInput = document.getElementById('bookedBy');
 const noteInput = document.getElementById('note');
 const formMessage = document.getElementById('formMessage');
@@ -15,19 +17,25 @@ const bookingReceiptCardEl = document.getElementById('bookingReceiptCard');
 const bookingReceiptTextEl = document.getElementById('bookingReceiptText');
 const copyReceiptBtn = document.getElementById('copyReceiptBtn');
 
-const calendarSection = document.getElementById('calendarSection');
-const calendarWrapper = document.getElementById('calendarWrapper');
-const prevMonthBtn = document.getElementById('prevMonthBtn');
-const nextMonthBtn = document.getElementById('nextMonthBtn');
-const clearDatesBtn = document.getElementById('clearDatesBtn');
-const calendarSelectionState = document.getElementById('calendarSelectionState');
+// Calendar elements (now in Step 1)
+const step1CalendarWrapper = document.getElementById('step1CalendarWrapper');
+const step1PrevMonthBtn = document.getElementById('step1PrevMonthBtn');
+const step1NextMonthBtn = document.getElementById('step1NextMonthBtn');
+const step1ClearDatesBtn = document.getElementById('step1ClearDatesBtn');
+const step1CalendarSelectionState = document.getElementById('step1CalendarSelectionState');
+
+// Keep references for backward compatibility
+const calendarWrapper = step1CalendarWrapper;
+const prevMonthBtn = step1PrevMonthBtn;
+const nextMonthBtn = step1NextMonthBtn;
+const clearDatesBtn = step1ClearDatesBtn;
+const calendarSelectionState = step1CalendarSelectionState;
 
 // ----------------------------------------------------
 // Step 1 – Type suggestion references
 // ----------------------------------------------------
 const typeOptionsEl = document.getElementById('typeOptions');
 const selectedTypeChipsEl = document.getElementById('selectedTypeChips');
-const bookingDurationInput = document.getElementById('bookingDurationDays');
 const suggestAvailabilityBtn = document.getElementById('suggestAvailabilityBtn');
 const suggestionMessageEl = document.getElementById('suggestionMessage');
 const suggestedSlotCardEl = document.getElementById('suggestedSlotCard');
@@ -35,7 +43,7 @@ const suggestedEquipmentNameEl = document.getElementById('suggestedEquipmentName
 const suggestedEquipmentTypeEl = document.getElementById('suggestedEquipmentType');
 const suggestedDateRangeEl = document.getElementById('suggestedDateRange');
 const suggestedDurationEl = document.getElementById('suggestedDuration');
-const suggestedEquipmentList = document.getElementById('suggestedEquipmentList');
+const suggestedEquipmentSelectorsEl = document.getElementById('suggestedEquipmentSelectors');
 const useSuggestedSlotBtn = document.getElementById('useSuggestedSlotBtn');
 const demoBadge = document.getElementById('demoBadge');
 const pageSubtitle = document.getElementById('pageSubtitle');
@@ -53,6 +61,7 @@ const clearDemoBtn = document.getElementById('clearDemoBtn');
 
 // Equipment search section references
 const equipmentSearchSelect = document.getElementById('equipmentSearch');
+const nameSearchInput = document.getElementById('nameSearch');
 const toggleSearchBtn = document.getElementById('toggleSearchBtn');
 const searchContent = document.getElementById('searchContent');
 const equipmentBookingsTable = document.getElementById('equipmentBookingsTable');
@@ -159,9 +168,8 @@ function showNextStepBanner(message) {
 }
 
 function scrollToReviewStep() {
-  const target = calendarSection.style.display !== 'none' ? calendarSection : bookingSection;
-
-  target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Calendar is now part of Step 1, scroll to it
+  calendarWrapper?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function addOneDay(dateStr) {
@@ -169,6 +177,28 @@ function addOneDay(dateStr) {
   const dt = new Date(y, m - 1, d);
   dt.setDate(dt.getDate() + 1);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function getDateRangeInputs() {
+  // Use calendar selection for date range
+  const startDate = selectedStartDate || '';
+  const endDate = selectedEndDate || '';
+
+  if (!startDate || !endDate) {
+    return { startDate, endDate, durationDays: null, isValid: false };
+  }
+
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+    return { startDate, endDate, durationDays: null, isValid: false };
+  }
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const durationDays = Math.floor((end - start) / msPerDay) + 1;
+
+  return { startDate, endDate, durationDays, isValid: durationDays >= 1 };
 }
 
 function formatMonthYear(date) {
@@ -214,9 +244,6 @@ function startNewBooking() {
   renderTypeOptions();
   renderSelectedTypeChips();
 
-  // Reset duration
-  document.getElementById('bookingDurationDays').value = '1';
-
   // Clear suggestion state
   clearSuggestionState();
   hideNextStepBanner();
@@ -231,12 +258,9 @@ function startNewBooking() {
   // Hide receipt
   hideBookingReceipt();
 
-  // Hide calendar section
-  calendarSection.style.display = 'none';
+  // Reset selection and calendar
   bookingsTableBody.innerHTML = '';
   calendarOffset = 0;
-
-  // Reset selection and calendar
   resetSelection();
 
   // Reload bookings
@@ -256,7 +280,9 @@ function formatDisplayDate(dateStr) {
   });
 }
 
-function clearSuggestionState(message = 'Choose at least one type to request a suggested slot.') {
+function clearSuggestionState(
+  message = 'Choose at least one type and select dates using the calendar.'
+) {
   suggestedSlot = null;
   suggestedSlotCardEl.style.display = 'none';
   suggestionMessageEl.textContent = message;
@@ -283,9 +309,81 @@ function formatEquipmentSummary(equipment) {
     : equipment.equipmentName;
 }
 
-function buildBookingReceipt({ equipments, requestedTypes, startDate, endDate, bookedBy, note }) {
+function ensureSuggestedSlotOptionState() {
+  if (!suggestedSlot) return;
+
+  if (!suggestedSlot.availableOptionsByType) {
+    suggestedSlot.availableOptionsByType = {};
+    suggestedSlot.equipments.forEach((equipment) => {
+      suggestedSlot.availableOptionsByType[equipment.equipmentType] = [equipment];
+    });
+  }
+
+  if (!suggestedSlot.selectedEquipmentByType) {
+    suggestedSlot.selectedEquipmentByType = {};
+  }
+
+  const nextEquipments = [];
+  Object.entries(suggestedSlot.availableOptionsByType).forEach(([type, options]) => {
+    if (!Array.isArray(options) || options.length === 0) {
+      return;
+    }
+
+    const requestedQuantity = Math.max(
+      1,
+      Number.parseInt(suggestedSlot.requestedQuantities?.[type], 10) || 1
+    );
+
+    const rawSelectedIds = Array.isArray(suggestedSlot.selectedEquipmentByType[type])
+      ? suggestedSlot.selectedEquipmentByType[type]
+      : suggestedSlot.selectedEquipmentByType[type]
+        ? [suggestedSlot.selectedEquipmentByType[type]]
+        : [];
+
+    const selectedIds = [];
+    rawSelectedIds.forEach((rawValue) => {
+      const id = Number.parseInt(rawValue, 10);
+      if (!Number.isInteger(id) || selectedIds.includes(id)) return;
+      if (!options.some((equipment) => equipment.equipmentId === id)) return;
+      selectedIds.push(id);
+    });
+
+    for (const option of options) {
+      if (selectedIds.length >= requestedQuantity) break;
+      if (!selectedIds.includes(option.equipmentId)) {
+        selectedIds.push(option.equipmentId);
+      }
+    }
+
+    suggestedSlot.selectedEquipmentByType[type] = selectedIds;
+
+    selectedIds.forEach((id) => {
+      const selectedEquipment = options.find((equipment) => equipment.equipmentId === id);
+      if (selectedEquipment) {
+        nextEquipments.push(selectedEquipment);
+      }
+    });
+  });
+
+  suggestedSlot.equipments = nextEquipments;
+}
+
+function buildBookingReceipt({
+  equipments,
+  requestedTypes,
+  startDate,
+  endDate,
+  projectNumber,
+  projectName,
+  bookedBy,
+  note
+}) {
   const lines = [
     'Equipment booking receipt',
+    '',
+    'Project Information:',
+    `- Project Number: ${projectNumber}`,
+    `- Project Name: ${projectName}`,
     '',
     'Booked equipment:',
     ...equipments.map(
@@ -323,20 +421,32 @@ function getBookingsQuery(equipmentIds) {
 
 function buildRequirementsPayload() {
   const result = {};
-  for (const [type, reqs] of Object.entries(selectedTypeRequirements)) {
-    if (reqs.os || reqs.version) {
-      result[type] = {};
-      if (reqs.os) result[type].os = reqs.os;
-      if (reqs.version) result[type].version = reqs.version;
+
+  Array.from(selectedTypes).forEach((type) => {
+    const reqs = selectedTypeRequirements[type] || {};
+    result[type] = {
+      quantity:
+        Number.isInteger(Number.parseInt(reqs.quantity, 10)) &&
+        Number.parseInt(reqs.quantity, 10) > 0
+          ? Number.parseInt(reqs.quantity, 10)
+          : 1
+    };
+    if (reqs.os) result[type].os = reqs.os;
+    if (reqs.version) result[type].version = reqs.version;
+  });
+
+  for (const [type, reqs] of Object.entries(result)) {
+    if (!selectedTypes.has(type)) {
+      delete result[type];
     }
   }
+
   return result;
 }
 
 function updateSuggestButtonState() {
-  const durationDays = Number.parseInt(bookingDurationInput.value, 10);
-  const isDisabled =
-    selectedTypes.size === 0 || !Number.isInteger(durationDays) || durationDays < 1;
+  const dateRange = getDateRangeInputs();
+  const isDisabled = selectedTypes.size === 0 || !dateRange.isValid;
   suggestAvailabilityBtn.disabled = isDisabled;
   suggestionMessageEl.style.display = isDisabled ? 'block' : 'none';
 }
@@ -347,9 +457,13 @@ function renderSelectedTypeChips() {
   Array.from(selectedTypes)
     .sort((left, right) => left.localeCompare(right))
     .forEach((type) => {
+      const quantity = Math.max(
+        1,
+        Number.parseInt(selectedTypeRequirements[type]?.quantity, 10) || 1
+      );
       const chip = document.createElement('span');
       chip.className = 'selected-chip';
-      chip.textContent = type;
+      chip.textContent = quantity > 1 ? `${type} x${quantity}` : type;
 
       const remove = document.createElement('button');
       remove.type = 'button';
@@ -374,6 +488,10 @@ function toggleTypeSelection(type) {
     delete selectedTypeRequirements[type];
   } else {
     selectedTypes.add(type);
+    selectedTypeRequirements[type] = {
+      ...(selectedTypeRequirements[type] || {}),
+      quantity: Math.max(1, Number.parseInt(selectedTypeRequirements[type]?.quantity, 10) || 1)
+    };
   }
 
   renderSelectedTypeChips();
@@ -409,9 +527,36 @@ function renderTypeOptions() {
     header.appendChild(label);
     option.appendChild(header);
 
-    if (selectedTypes.has(type) && (osOptions.length > 0 || versionOptions.length > 0)) {
+    if (selectedTypes.has(type)) {
+      if (!selectedTypeRequirements[type]) {
+        selectedTypeRequirements[type] = { quantity: 1 };
+      }
+
       const reqs = document.createElement('div');
       reqs.className = 'type-requirements';
+
+      const quantityRow = document.createElement('div');
+      quantityRow.className = 'type-requirement';
+      const quantityLabel = document.createElement('label');
+      quantityLabel.textContent = 'Quantity:';
+      const quantityInput = document.createElement('input');
+      quantityInput.type = 'number';
+      quantityInput.min = '1';
+      quantityInput.step = '1';
+      quantityInput.value = String(
+        Math.max(1, Number.parseInt(selectedTypeRequirements[type]?.quantity, 10) || 1)
+      );
+      quantityInput.addEventListener('input', () => {
+        const value = Math.max(1, Number.parseInt(quantityInput.value, 10) || 1);
+        quantityInput.value = String(value);
+        selectedTypeRequirements[type].quantity = value;
+        renderSelectedTypeChips();
+        clearSuggestionState();
+        updateSuggestButtonState();
+      });
+      quantityRow.appendChild(quantityLabel);
+      quantityRow.appendChild(quantityInput);
+      reqs.appendChild(quantityRow);
 
       if (osOptions.length > 0) {
         const reqRow = document.createElement('div');
@@ -472,27 +617,63 @@ function renderSuggestedSlot() {
     return;
   }
 
-  if (suggestedEquipmentList) {
-    suggestedEquipmentList.innerHTML = '';
-    suggestedSlot.equipments.forEach((equipment) => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'equipment-item';
+  ensureSuggestedSlotOptionState();
 
-      const nameDiv = document.createElement('div');
-      nameDiv.className = 'equipment-item-name';
-      nameDiv.textContent = formatEquipmentSummary(equipment);
+  if (suggestedEquipmentSelectorsEl) {
+    suggestedEquipmentSelectorsEl.innerHTML = '';
 
-      const typeDiv = document.createElement('div');
-      typeDiv.className = 'equipment-item-type';
-      const typeParts = [equipment.equipmentType];
-      if (equipment.operatingSystem) typeParts.push(equipment.operatingSystem);
-      if (equipment.cimplicityVersion) typeParts.push(`v${equipment.cimplicityVersion}`);
-      typeDiv.textContent = typeParts.join(' · ');
+    Object.entries(suggestedSlot.availableOptionsByType)
+      .sort(([leftType], [rightType]) => leftType.localeCompare(rightType))
+      .forEach(([type, options]) => {
+        if (!Array.isArray(options) || options.length === 0) return;
 
-      itemDiv.appendChild(nameDiv);
-      itemDiv.appendChild(typeDiv);
-      suggestedEquipmentList.appendChild(itemDiv);
-    });
+        const requestedQuantity = Math.max(
+          1,
+          Number.parseInt(suggestedSlot.requestedQuantities?.[type], 10) || 1
+        );
+        const selectedIds = Array.isArray(suggestedSlot.selectedEquipmentByType[type])
+          ? suggestedSlot.selectedEquipmentByType[type]
+          : [];
+
+        for (let index = 0; index < requestedQuantity; index++) {
+          const selectorRow = document.createElement('div');
+          selectorRow.className = 'suggestion-selector';
+
+          const label = document.createElement('label');
+          label.textContent = requestedQuantity > 1 ? `${type} #${index + 1}:` : `${type}:`;
+
+          const select = document.createElement('select');
+          const selectedByOtherSelectors = new Set(
+            selectedIds.filter((selectedId, selectedIndex) => selectedIndex !== index)
+          );
+          options.forEach((equipment) => {
+            const option = document.createElement('option');
+            option.value = String(equipment.equipmentId);
+            option.textContent = formatEquipmentSummary(equipment);
+            option.selected = equipment.equipmentId === selectedIds[index];
+            option.disabled = selectedByOtherSelectors.has(equipment.equipmentId);
+            select.appendChild(option);
+          });
+
+          select.addEventListener('change', () => {
+            const nextIds = Array.isArray(suggestedSlot.selectedEquipmentByType[type])
+              ? [...suggestedSlot.selectedEquipmentByType[type]]
+              : [];
+            nextIds[index] = Number.parseInt(select.value, 10);
+            suggestedSlot.selectedEquipmentByType[type] = nextIds;
+            ensureSuggestedSlotOptionState();
+            previewSuggestedEquipment(suggestedSlot.equipments, {
+              startDate: suggestedSlot.startDate,
+              endDate: suggestedSlot.endDate
+            });
+            renderSuggestedSlot();
+          });
+
+          selectorRow.appendChild(label);
+          selectorRow.appendChild(select);
+          suggestedEquipmentSelectorsEl.appendChild(selectorRow);
+        }
+      });
   }
 
   suggestedDateRangeEl.textContent = `${formatDisplayDate(suggestedSlot.startDate)} to ${formatDisplayDate(suggestedSlot.endDate)}`;
@@ -510,15 +691,12 @@ function previewSuggestedEquipment(equipments, suggestedDates) {
   hideBookingReceipt();
 
   if (activeEquipmentIds.length === 0) {
-    calendarSection.style.display = 'none';
     bookingsTableBody.innerHTML = '';
     noBookings.style.display = 'none';
     currentBookings = [];
     activeEquipmentSummaries = [];
     return;
   }
-
-  calendarSection.style.display = 'block';
 
   apiFetch(getBookingsQuery(activeEquipmentIds))
     .then((res) => res.json())
@@ -529,9 +707,7 @@ function previewSuggestedEquipment(equipments, suggestedDates) {
       syncFormWithCalendar();
       refreshCalendar();
       loadBookings(activeEquipmentIds);
-      showNextStepBanner(
-        'Review the suggested dates in the calendar, then use the booking form below to confirm this reservation.'
-      );
+      showNextStepBanner('Review the calendar dates and complete Step 2 to confirm your booking.');
     });
 }
 
@@ -543,15 +719,12 @@ function updateActiveEquipment(equipments, suggestedDates = null) {
   hideBookingReceipt();
 
   if (activeEquipmentIds.length === 0) {
-    calendarSection.style.display = 'none';
     bookingsTableBody.innerHTML = '';
     noBookings.style.display = 'none';
     currentBookings = [];
     activeEquipmentSummaries = [];
     return;
   }
-
-  calendarSection.style.display = 'block';
 
   apiFetch(getBookingsQuery(activeEquipmentIds))
     .then((res) => res.json())
@@ -584,22 +757,22 @@ apiFetch('/equipment-types')
 // ----------------------------------------------------
 // Step 1 – Type suggestion logic
 // ----------------------------------------------------
-bookingDurationInput.addEventListener('input', () => {
-  clearSuggestionState();
-  updateSuggestButtonState();
+[bookingStartDateInput, bookingEndDateInput].forEach((input) => {
+  // removed - dates now come from calendar
 });
 
 suggestAvailabilityBtn.addEventListener('click', () => {
-  const durationDays = Number.parseInt(bookingDurationInput.value, 10);
+  const dateRange = getDateRangeInputs();
 
-  if (selectedTypes.size === 0 || !Number.isInteger(durationDays) || durationDays < 1) {
-    updateSuggestButtonState();
+  if (selectedTypes.size === 0 || !dateRange.isValid) {
+    clearSuggestionState();
     return;
   }
 
   const params = new URLSearchParams({
     types: Array.from(selectedTypes).join(','),
-    durationDays: String(durationDays)
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate
   });
   const requirementsPayload = buildRequirementsPayload();
   if (Object.keys(requirementsPayload).length > 0) {
@@ -621,6 +794,14 @@ suggestAvailabilityBtn.addEventListener('click', () => {
           body.requestedTypes ||
           Array.from(selectedTypes).sort((left, right) => left.localeCompare(right))
       };
+      suggestedSlot.selectedEquipmentByType = {};
+      (suggestedSlot.equipments || []).forEach((equipment) => {
+        if (!suggestedSlot.selectedEquipmentByType[equipment.equipmentType]) {
+          suggestedSlot.selectedEquipmentByType[equipment.equipmentType] = [];
+        }
+        suggestedSlot.selectedEquipmentByType[equipment.equipmentType].push(equipment.equipmentId);
+      });
+      ensureSuggestedSlotOptionState();
       previewSuggestedEquipment(suggestedSlot.equipments, {
         startDate: suggestedSlot.startDate,
         endDate: suggestedSlot.endDate
@@ -679,11 +860,12 @@ function loadBookings(equipmentIds) {
       bookings.forEach((b) => {
         const row = document.createElement('tr');
         row.innerHTML = `
+          <td>${b.project_number || '-'}</td>
+          <td>${b.project_name || '-'}</td>
           <td>${b.equipment_name || ''}</td>
           <td>${b.start_datetime.substring(0, 10)}</td>
           <td>${b.end_datetime.substring(0, 10)}</td>
           <td>${b.booked_by}</td>
-          <td>${b.note || ''}</td>
           <td><button class="danger-btn">❌</button></td>
         `;
 
@@ -794,6 +976,7 @@ function onCalendarDateClick(dateStr) {
   }
 
   syncFormWithCalendar(true);
+  updateSuggestButtonState();
   refreshCalendar();
 }
 
@@ -921,6 +1104,20 @@ bookingForm.addEventListener('submit', (event) => {
   formMessage.textContent = '';
   hideBookingReceipt();
 
+  // Validate mandatory fields
+  if (!projectNumberInput.value.trim()) {
+    formMessage.textContent = 'Project Number is required';
+    return;
+  }
+  if (!projectNameInput.value.trim()) {
+    formMessage.textContent = 'Project Name is required';
+    return;
+  }
+  if (!bookedByInput.value.trim()) {
+    formMessage.textContent = 'Your name is required';
+    return;
+  }
+
   if (activeEquipmentIds.length === 0 || !selectedStartDate) return;
 
   const receiptData = {
@@ -928,6 +1125,8 @@ bookingForm.addEventListener('submit', (event) => {
     requestedTypes: suggestedSlot?.requestedTypes || Array.from(selectedTypes),
     startDate: selectedStartDate,
     endDate: selectedEndDate || selectedStartDate,
+    projectNumber: projectNumberInput.value.trim(),
+    projectName: projectNameInput.value.trim(),
     bookedBy: bookedByInput.value,
     note: noteInput.value.trim()
   };
@@ -942,6 +1141,8 @@ bookingForm.addEventListener('submit', (event) => {
       equipment_ids: activeEquipmentIds,
       start_datetime: startDatetime,
       end_datetime: endDatetime,
+      project_number: projectNumberInput.value.trim(),
+      project_name: projectNameInput.value.trim(),
       booked_by: bookedByInput.value,
       note: noteInput.value
     })
@@ -1030,10 +1231,62 @@ function displayEquipmentBookings(equipmentId) {
       noEquipmentBookings.style.display = 'none';
       bookings.forEach((booking) => {
         const row = equipmentBookingsTableBody.insertRow();
-        row.innerHTML = `<td>${booking.equipment_name}</td><td>${formatDisplayDate(booking.start_datetime.split(' ')[0])}</td><td>${formatDisplayDate(booking.end_datetime.split(' ')[0])}</td><td>${booking.booked_by}</td><td>${booking.note || ''}</td>`;
+        row.innerHTML = `<td>${booking.equipment_name}</td><td>${formatDisplayDate(booking.start_datetime.split(' ')[0])}</td><td>${formatDisplayDate(booking.end_datetime.split(' ')[0])}</td><td>${booking.booked_by}</td>`;
       });
     })
     .catch((err) => console.error('Failed to load equipment bookings:', err));
+}
+
+function displayBookingsByName(name) {
+  if (!name.trim()) {
+    equipmentBookingsTable.style.display = 'none';
+    noEquipmentBookings.style.display = 'none';
+    return;
+  }
+
+  apiFetch('/bookings')
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`Server responded with status ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((bookings) => {
+      if (!Array.isArray(bookings)) {
+        throw new Error('Response is not an array of bookings');
+      }
+
+      const q = name.toLowerCase();
+      const filteredBookings = bookings.filter(
+        (b) =>
+          b.booked_by.toLowerCase().includes(q) ||
+          (b.project_number || '').toLowerCase().includes(q) ||
+          (b.project_name || '').toLowerCase().includes(q)
+      );
+
+      equipmentBookingsTableBody.innerHTML = '';
+      if (filteredBookings.length === 0) {
+        equipmentBookingsTable.style.display = 'none';
+        noEquipmentBookings.style.display = 'block';
+        noEquipmentBookings.textContent = `No bookings found for "${name}".`;
+        return;
+      }
+
+      equipmentBookingsTable.style.display = 'table';
+      noEquipmentBookings.style.display = 'none';
+      filteredBookings.forEach((booking) => {
+        const row = equipmentBookingsTableBody.insertRow();
+        row.innerHTML = `<td>${booking.project_number || '-'}</td><td>${booking.project_name || '-'}</td><td>${booking.equipment_name}</td><td>${formatDisplayDate(booking.start_datetime.split(' ')[0])}</td><td>${formatDisplayDate(booking.end_datetime.split(' ')[0])}</td><td>${booking.booked_by}</td><td><button class="danger-btn">❌</button></td>`;
+
+        row.querySelector('button').addEventListener('click', () => {
+          if (!confirm(`Cancel booking by ${booking.booked_by}?`)) return;
+          apiFetch(`/bookings/${booking.id}`, { method: 'DELETE' }).then(() => {
+            displayBookingsByName(name);
+          });
+        });
+      });
+    })
+    .catch((err) => console.error('Failed to load bookings:', err));
 }
 
 toggleSearchBtn?.addEventListener('click', () => {
@@ -1043,7 +1296,17 @@ toggleSearchBtn?.addEventListener('click', () => {
 });
 
 equipmentSearchSelect?.addEventListener('change', (e) => {
+  nameSearchInput.value = '';
   displayEquipmentBookings(e.target.value);
 });
 
+nameSearchInput?.addEventListener('input', (e) => {
+  equipmentSearchSelect.value = '';
+  displayBookingsByName(e.target.value);
+});
+
 loadAllEquipment();
+
+// Initialize calendar on page load
+currentBookings = [];
+refreshCalendar();
